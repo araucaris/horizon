@@ -2,12 +2,11 @@ package dev.araucaris.horizon.packet;
 
 import static java.util.UUID.randomUUID;
 
-import dev.shiza.dew.event.Event;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.UUID;
 
-public abstract class Packet implements Event, Serializable {
+public abstract class Packet implements Serializable {
 
   private UUID uniqueId;
 
