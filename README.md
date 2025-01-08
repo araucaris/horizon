@@ -10,7 +10,7 @@ public static void main(String[] args) {
       Horizon.newBuilder(
               RedisClient.create(
                   RedisURI.builder()
-                      .withHost("redis://localhost:6379")
+                      .withHost("localhost")
                       .build()))
           .build()) {
     horizon.retrieveStorage("locks").clear();
