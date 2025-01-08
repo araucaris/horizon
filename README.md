@@ -2,28 +2,70 @@
 
 ---
 
-## **Horizon Configuration**
+## **Horizon Examples**
 
 ```java
-RedisClient redisClient = RedisClient.create("redis://localhost:6379");
-Horizon horizon = Horizon.newBuilder(redisClient).build();
-// On shutdown
-horizon.
+public static void main(String[] args) {
+  try (Horizon horizon =
+      Horizon.newBuilder(
+              RedisClient.create(
+                  RedisURI.builder()
+                      .withHost("redis://localhost:6379")
+                      .build()))
+          .build()) {
+    horizon.retrieveStorage("locks").clear();
 
-close();
-```
+    horizon.subscribe("tests", new ExampleListener());
+    horizon.publish("tests", new ExamplePacket("Hello, world!"));
 
-### **Packet Structure**
+    horizon
+        .<ExampleCallback>request("tests", new ExampleCallback("Hello, world!"))
+        .thenAccept(response -> System.out.println("Received response: " + response.getContent()))
+        .join();
 
-```java
-public class ExampleRequestPacket extends Packet {
+    AtomicInteger counter = new AtomicInteger(0);
+    for (int j = 0; j < 10; j++) {
+      int i = j;
+      DistributedLock lock = horizon.retrieveLock("my_lock");
+      lock.execute(
+              () -> {
+                System.out.println("Thread " + i + " acquired the lock!");
+
+                try {
+                  Thread.sleep(100);
+
+                  // Simulate a long-running task
+                } catch (InterruptedException ignored) {
+                  Thread.currentThread().interrupt();
+                }
+              },
+              Duration.ofMillis(10L),
+              Duration.ofSeconds(5L))
+          .whenComplete(
+              (unused, throwable) -> {
+                counter.incrementAndGet();
+                System.out.println("Thread " + i + " released the lock!");
+              });
+    }
+
+    while (counter.get() < 10) {
+      Thread.sleep(100);
+      System.out.println("waiting for all threads to finish (" + counter.get() + "/10)");
+    }
+  } catch (Exception e) {
+    e.printStackTrace();
+    System.exit(1);
+  }
+}
+
+public static class ExamplePacket extends Packet {
 
   private String content;
 
-  private ExampleRequestPacket() {
-  }
+  @JsonCreator
+  private ExamplePacket() {}
 
-  public ExampleRequestPacket(String content) {
+  public ExamplePacket(String content) {
     this.content = content;
   }
 
@@ -31,49 +73,36 @@ public class ExampleRequestPacket extends Packet {
     return content;
   }
 }
-```
 
-### **Subscriber**
+public static class ExampleCallback extends Packet {
 
-```java
-public class ExampleListener implements Subscriber {
+  private String content;
 
-  @Subscribe
-  public Packet receive(ExampleRequestPacket request) {
-    // Sync response
-    if (condition) {
-      return null; // Return null if conditions are not met
-    }
-    ExampleResponsePacket response =
-        new ExampleResponsePacket(request.getContent() + " Pong!");
-    return response.dispatchTo(request.getUniqueId());
+  @JsonCreator
+  private ExampleCallback() {}
+
+  public ExampleCallback(String content) {
+    this.content = content;
   }
 
-  @Subscribe
-  public void receive(BroadcastPacket packet) {
-    // Simple listener
-    System.out.printf("Received P2P packet: %s", packet.getContent());
-  }
-
-  @Subscribe
-  public CompletableFuture<Packet> receive(BroadcastPacket packet) {
-    // Async response
-    ExampleResponsePacket response =
-        new ExampleResponsePacket(request.getContent() + " Pong!");
-    return completedFuture(response.dispatchTo(request.getUniqueId()));
-  }
-
-  @Override
-  public String identity() {
-    return "tests";
+  public String getContent() {
+    return content;
   }
 }
-```
 
-### **Distributed Locking**
+private static class ExampleListener {
 
-```java
-TODO
+  @PacketHandler
+  public void handle(ExamplePacket packet) {
+    System.out.printf(
+        "Received packet with content %s and uid %s%n", packet.getContent(), packet.getUniqueId());
+  }
+
+  @PacketHandler
+  public Packet handle(ExampleCallback request) {
+    return new ExampleCallback("HIII " + request.getContent()).pointAt(request.getUniqueId());
+  }
+}
 ```
 
 ---
