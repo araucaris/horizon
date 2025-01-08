@@ -2,53 +2,46 @@ package dev.araucaris.horizon;
 
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Arrays.stream;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.stream.Collectors.toMap;
 
 import dev.araucaris.horizon.distributed.DistributedLock;
 import dev.araucaris.horizon.packet.Packet;
+import dev.araucaris.horizon.packet.PacketException;
 import dev.araucaris.horizon.packet.PacketListener;
 import dev.araucaris.horizon.packet.callback.PacketCallbackCache;
 import dev.araucaris.horizon.packet.callback.PacketCallbackException;
 import dev.araucaris.horizon.packet.callback.PacketCallbackListener;
 import dev.araucaris.horizon.serdes.HorizonSerdes;
 import dev.araucaris.horizon.storage.HorizonStorage;
-import dev.shiza.dew.event.EventBus;
-import dev.shiza.dew.subscription.Subscribe;
-import dev.shiza.dew.subscription.Subscriber;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
-import java.io.IOException;
-import java.lang.reflect.Method;
+import java.io.Closeable;
+import java.lang.invoke.MethodHandle;
 import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class Horizon {
+public final class Horizon implements Closeable {
   private static final RedisBinaryCodec BINARY_CODEC = new RedisBinaryCodec();
 
   private final RedisClient redisClient;
   private final StatefulRedisConnection<String, byte[]> connection;
   private final StatefulRedisPubSubConnection<String, byte[]> pubSubConnection;
-  private final EventBus eventBus;
+  private final SubscriptionService subscriptionService = SubscriptionService.create();
   private final HorizonSerdes horizonSerdes;
   private final PacketCallbackCache packetCallbackCache = PacketCallbackCache.create();
   private final Duration requestCleanupInterval;
   private final Set<String> subscribedTopics = ConcurrentHashMap.newKeySet();
   private final Map<String, HorizonStorage> storageByName = new ConcurrentHashMap<>();
 
-  Horizon(
-      RedisClient redisClient,
-      EventBus eventBus,
-      HorizonSerdes horizonSerdes,
-      Duration requestCleanupInterval) {
+  Horizon(RedisClient redisClient, HorizonSerdes horizonSerdes, Duration requestCleanupInterval) {
     subscribedTopics.add("callbacks");
 
     // Redis
@@ -59,10 +52,6 @@ public final class Horizon {
     pubSubConnection.addListener(
         PacketListener.create(
             "callbacks", PacketCallbackListener.create(horizonSerdes, packetCallbackCache)));
-
-    // EventBus
-    this.eventBus = eventBus;
-    this.eventBus.result(Packet.class, (event, packet) -> publish("callbacks", packet));
 
     this.horizonSerdes = horizonSerdes;
     this.requestCleanupInterval = requestCleanupInterval;
@@ -92,60 +81,74 @@ public final class Horizon {
     }
   }
 
-  public void subscribe(Subscriber subscriber) throws HorizonException {
-    String identity = subscriber.identity();
-    if (identity == null || identity.isEmpty()) {
-      throw new HorizonException("Subscriber's identity cannot be null or empty");
+  public void subscribe(String topic, Object subscriber) throws HorizonException {
+    if (topic == null || topic.isEmpty()) {
+      throw new HorizonException(
+          "%s's identity cannot be null or empty".formatted(subscriber.getClass()));
     }
 
-    eventBus.subscribe(subscriber);
-
-    Set<Class<? extends Packet>> packetTypes = new HashSet<>();
-    for (Method method : subscriber.getClass().getDeclaredMethods()) {
-      if (!method.isAnnotationPresent(Subscribe.class)) {
-        continue;
-      }
-
-      if (method.getParameterCount() == 0) {
-        throw new HorizonException(
-            "Subscriber's method %s parameter count is zero".formatted(method.getName()));
-      }
-
-      //noinspection unchecked
-      Class<? extends Packet> packetType =
-          (Class<? extends Packet>)
-              stream(method.getParameterTypes())
-                  .filter(Packet.class::isAssignableFrom)
-                  .findAny()
-                  .orElseThrow(
-                      () ->
-                          new NullPointerException(
-                              "No valid message type found under %s#%s"
-                                  .formatted(subscriber.getClass(), method)));
-      packetTypes.add(packetType);
-    }
-
-    pubSubConnection.addListener(
-        PacketListener.create(
-            identity,
-            (channelName, payload) -> {
-              Packet packet = horizonSerdes.decode(payload, Packet.class);
-              if (packet == null) {
-                return;
-              }
-
-              boolean whetherListensForPacket = packetTypes.contains(packet.getClass());
-              if (whetherListensForPacket) {
-                eventBus.publish(packet, identity);
-              }
-            }));
-
-    if (subscribedTopics.contains(identity)) {
+    Set<Class<? extends Packet>> packetTypes = subscriptionService.subscribe(topic, subscriber);
+    pubSubConnection.addListener(createPacketListener(topic, packetTypes));
+    if (subscribedTopics.contains(topic)) {
       return;
     }
 
-    subscribedTopics.add(identity);
-    pubSubConnection.sync().subscribe(identity);
+    subscribedTopics.add(topic);
+    pubSubConnection.sync().subscribe(topic);
+  }
+
+  private PacketListener createPacketListener(
+      String topic, Set<Class<? extends Packet>> packetTypes) {
+    return PacketListener.create(
+        topic,
+        (channelName, payload) -> {
+          Packet packet = horizonSerdes.decode(payload, Packet.class);
+          if (packet == null) {
+            return;
+          }
+
+          if (packetTypes.contains(packet.getClass())) {
+            subscriptionService.retrieveByPacketTypeAndTopic(packet.getClass(), topic).stream()
+                .collect(toMap(Map.Entry::getKey, Map.Entry::getValue))
+                .forEach(
+                    (subscriber, invocations) -> {
+                      for (MethodHandle invocation : invocations) {
+                        try {
+                          Object returnedValue = invocation.invoke(subscriber, packet);
+                          if (returnedValue != null) {
+                            processReturnValue(returnedValue);
+                          }
+                        } catch (Throwable exception) {
+                          throw new PacketException(
+                              "Could not publish event, because of unexpected exception during method invocation.",
+                              exception);
+                        }
+                      }
+                    });
+          }
+        });
+  }
+
+  private void processReturnValue(Object returnedValue) {
+    if (returnedValue == null) {
+      return;
+    }
+
+    Class<?> resultType = returnedValue.getClass();
+    if (resultType == CompletableFuture.class) {
+      ((CompletableFuture<?>) returnedValue)
+          .whenComplete((result, cause) -> processReturnValue(result))
+          .exceptionally(
+              cause -> {
+                throw new PacketException(
+                    "Could not handle result of type %s, because of an exception."
+                        .formatted(cause.getClass().getName()),
+                    cause);
+              });
+      return;
+    }
+
+    publish("callbacks", ((Packet) returnedValue));
   }
 
   public <T extends Packet> CompletableFuture<T> request(String channelName, Packet packet) {
@@ -169,16 +172,17 @@ public final class Horizon {
     }
   }
 
-  public HorizonStorage getStorage(String name) throws HorizonException {
+  public HorizonStorage retrieveStorage(String name) throws HorizonException {
     return storageByName.computeIfAbsent(
         name, k -> HorizonStorage.create(name, horizonSerdes, connection));
   }
 
-  public DistributedLock getLock(String key) {
-    return new DistributedLock(key, getStorage("locks"));
+  public DistributedLock retrieveLock(String key) {
+    return new DistributedLock(key, retrieveStorage("locks"));
   }
 
-  public void close() throws IOException {
+  @Override
+  public void close() {
     redisClient.close();
     connection.close();
     pubSubConnection.close();
