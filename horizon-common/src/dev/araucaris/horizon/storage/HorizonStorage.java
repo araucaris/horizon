@@ -44,6 +44,12 @@ public class HorizonStorage {
         () -> "Failed to delete %s from redis-cache".formatted(key));
   }
 
+  public Long clear() throws StorageException {
+    return performSafely(
+        () -> connection.sync().del(namespace),
+        () -> "Failed to clear %s from redis-cache".formatted(namespace));
+  }
+
   private <T, E extends Exception> T performSafely(
       ThrowingSupplier<T, E> action, Supplier<String> message) throws StorageException {
     try {

@@ -6,6 +6,7 @@ import static java.lang.Math.min;
 import static java.time.Duration.ZERO;
 import static java.time.Duration.ofMillis;
 import static java.time.Instant.now;
+import static java.time.Instant.ofEpochMilli;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.ThreadLocalRandom.current;
 
@@ -27,21 +28,21 @@ public class DistributedLock {
     this.storage = storage;
   }
 
-  public boolean acquire(Duration timeToLive) throws DistributedLockException {
+  public boolean acquire(Duration ttl) throws DistributedLockException {
     String lockKey = getLockKey();
     try {
       Instant now = now();
-      Instant expiresAt = now.plus(timeToLive);
+      Instant expiresAt = now.plus(ttl);
 
       DistributedLockContext existingContext = storage.get(lockKey, DistributedLockContext.class);
-      if (existingContext == null || now.isAfter(expiresAt)) {
-        return storage.set(lockKey, new DistributedLockContext(pid, expiresAt));
+      if (existingContext == null || now.isAfter(ofEpochMilli(existingContext.expiresAt()))) {
+        return storage.set(lockKey, new DistributedLockContext(pid, expiresAt.toEpochMilli()));
       }
 
       return false;
     } catch (StorageException exception) {
       throw new DistributedLockException(
-          "Failed to acquire lock %s with timeToLive %s".formatted(lockKey, timeToLive), exception);
+          "Failed to acquire lock %s with ttl %s".formatted(lockKey, ttl), exception);
     }
   }
 

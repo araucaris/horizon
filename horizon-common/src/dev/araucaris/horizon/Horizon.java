@@ -40,6 +40,7 @@ public final class Horizon implements Closeable {
   private final Duration requestCleanupInterval;
   private final Set<String> subscribedTopics = ConcurrentHashMap.newKeySet();
   private final Map<String, HorizonStorage> storageByName = new ConcurrentHashMap<>();
+  private final Map<String, DistributedLock> locksByName = new ConcurrentHashMap<>();
 
   Horizon(RedisClient redisClient, HorizonSerdes horizonSerdes, Duration requestCleanupInterval) {
     subscribedTopics.add("callbacks");
@@ -174,11 +175,11 @@ public final class Horizon implements Closeable {
 
   public HorizonStorage retrieveStorage(String name) throws HorizonException {
     return storageByName.computeIfAbsent(
-        name, k -> HorizonStorage.create(name, horizonSerdes, connection));
+        name, k -> HorizonStorage.create(k, horizonSerdes, connection));
   }
 
   public DistributedLock retrieveLock(String key) {
-    return new DistributedLock(key, retrieveStorage("locks"));
+    return locksByName.computeIfAbsent(key, k -> new DistributedLock(k, retrieveStorage("locks")));
   }
 
   @Override

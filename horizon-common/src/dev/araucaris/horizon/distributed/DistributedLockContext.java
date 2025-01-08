@@ -1,17 +1,16 @@
 package dev.araucaris.horizon.distributed;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import java.time.Instant;
 import java.util.Objects;
 
 public final class DistributedLockContext {
   private String owner;
-  private Instant expiresAt;
+  private Long expiresAt;
 
   @JsonCreator
   private DistributedLockContext() {}
 
-  public DistributedLockContext(String owner, Instant expiresAt) {
+  public DistributedLockContext(String owner, Long expiresAt) {
     this.owner = owner;
     this.expiresAt = expiresAt;
   }
@@ -20,7 +19,7 @@ public final class DistributedLockContext {
     return owner;
   }
 
-  public Instant expiresAt() {
+  public Long expiresAt() {
     return expiresAt;
   }
 
