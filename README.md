@@ -132,7 +132,7 @@ In packet handler. You can return response wrapped into CompletableFuture, or no
         request.getContent() + " Pong!");
     // Return a CompletableFuture for asynchronous processing
     return CompletableFuture.completedFuture(
-        response.dispatchTo(request.getUniqueId()));
+        response.pointAt(request.getUniqueId()));
   }
 ```
 
