@@ -1,4 +1,4 @@
-package dev.araucaris.horizon.serdes.jackson;
+package dev.horizon.codec.jackson;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -6,14 +6,14 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.introspect.VisibilityChecker;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import dev.araucaris.horizon.serdes.HorizonSerdes;
+import dev.horizon.codec.HorizonCodec;
 
-public final class JacksonSerdesFactory {
+public final class JacksonCodecFactory {
 
-  private JacksonSerdesFactory() {}
+  private JacksonCodecFactory() {}
 
-  public static HorizonSerdes getJacksonSerdes() {
-    JsonMapper mapper =
+  public static HorizonCodec getJacksonCodec() {
+    final JsonMapper mapper =
         JsonMapper.builder()
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
@@ -25,6 +25,6 @@ public final class JacksonSerdesFactory {
             .withGetterVisibility(JsonAutoDetect.Visibility.NONE)
             .withSetterVisibility(JsonAutoDetect.Visibility.NONE)
             .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
-    return new JacksonSerdes(mapper);
+    return new JacksonCodec(mapper);
   }
 }

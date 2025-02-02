@@ -7,13 +7,7 @@
 ```java
 public static void main(String[] args) {
   try (Horizon horizon =
-      Horizon.newBuilder(
-              RedisClient.create(
-                  RedisURI.builder()
-                      .withHost("localhost")
-                      .build()))
-          .build()) {
-    horizon.retrieveStorage("locks").clear();
+      HorizonCreator.creator(RedisClient.create()).create()) {
 
     horizon.subscribe("tests", new ExampleListener());
     horizon.publish("tests", new ExamplePacket("Hello, world!"));
@@ -25,8 +19,8 @@ public static void main(String[] args) {
 
     AtomicInteger counter = new AtomicInteger(0);
     for (int j = 0; j < 10; j++) {
-      int i = j;
-      DistributedLock lock = horizon.retrieveLock("my_lock");
+      final int i = j;
+      final DistributedLock lock = horizon.getLock("my_lock");
       lock.execute(
               () -> {
                 System.out.println("Thread " + i + " acquired the lock!");
@@ -35,7 +29,7 @@ public static void main(String[] args) {
                   Thread.sleep(100);
 
                   // Simulate a long-running task
-                } catch (InterruptedException ignored) {
+                } catch (final InterruptedException ignored) {
                   Thread.currentThread().interrupt();
                 }
               },
@@ -52,8 +46,8 @@ public static void main(String[] args) {
       Thread.sleep(100);
       System.out.println("waiting for all threads to finish (" + counter.get() + "/10)");
     }
-  } catch (Exception e) {
-    e.printStackTrace();
+  } catch (final Exception exception) {
+    exception.printStackTrace();
     System.exit(1);
   }
 }
@@ -65,7 +59,7 @@ public static class ExamplePacket extends Packet {
   @JsonCreator
   private ExamplePacket() {}
 
-  public ExamplePacket(String content) {
+  public ExamplePacket(final String content) {
     this.content = content;
   }
 
@@ -81,7 +75,7 @@ public static class ExampleCallback extends Packet {
   @JsonCreator
   private ExampleCallback() {}
 
-  public ExampleCallback(String content) {
+  public ExampleCallback(final String content) {
     this.content = content;
   }
 
@@ -93,13 +87,14 @@ public static class ExampleCallback extends Packet {
 private static class ExampleListener {
 
   @PacketHandler
-  public void handle(ExamplePacket packet) {
+  public void handle(final ExamplePacket packet) {
     System.out.printf(
         "Received packet with content %s and uid %s%n", packet.getContent(), packet.getUniqueId());
   }
 
   @PacketHandler
-  public Packet handle(ExampleCallback request) {
+  public Packet handle(final ExampleCallback request) {
+    // any response can be returned, just make sure it's pointed at the right request id
     return new ExampleCallback("HIII " + request.getContent()).pointAt(request.getUniqueId());
   }
 }

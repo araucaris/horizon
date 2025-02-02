@@ -1,4 +1,4 @@
-package dev.araucaris.horizon.packet;
+package dev.horizon.packet;
 
 import static java.util.UUID.randomUUID;
 
@@ -10,7 +10,7 @@ public abstract class Packet implements Serializable {
 
   private UUID uniqueId;
 
-  protected Packet(UUID uniqueId) {
+  protected Packet(final UUID uniqueId) {
     this.uniqueId = uniqueId;
   }
 
@@ -22,14 +22,14 @@ public abstract class Packet implements Serializable {
     return uniqueId;
   }
 
-  public <T extends Packet> T pointAt(UUID requestUniqueId) {
+  public <T extends Packet> T pointAt(final UUID requestUniqueId) {
     this.uniqueId = requestUniqueId;
     //noinspection unchecked
     return (T) this;
   }
 
   @Override
-  public boolean equals(Object comparedObject) {
+  public boolean equals(final Object comparedObject) {
     if (this == comparedObject) {
       return true;
     }
@@ -38,7 +38,7 @@ public abstract class Packet implements Serializable {
       return false;
     }
 
-    Packet packet = (Packet) comparedObject;
+    final Packet packet = (Packet) comparedObject;
     return Objects.equals(uniqueId, packet.uniqueId);
   }
 

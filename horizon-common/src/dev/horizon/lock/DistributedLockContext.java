@@ -1,16 +1,15 @@
-package dev.araucaris.horizon.distributed;
+package dev.horizon.lock;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import java.util.Objects;
 
 public final class DistributedLockContext {
   private String owner;
   private Long expiresAt;
 
-  @JsonCreator
-  private DistributedLockContext() {}
+  @SuppressWarnings("unused")
+  public DistributedLockContext() {}
 
-  public DistributedLockContext(String owner, Long expiresAt) {
+  public DistributedLockContext(final String owner, final Long expiresAt) {
     this.owner = owner;
     this.expiresAt = expiresAt;
   }
@@ -24,10 +23,10 @@ public final class DistributedLockContext {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (obj == this) return true;
     if (obj == null || obj.getClass() != getClass()) return false;
-    var that = (DistributedLockContext) obj;
+    final var that = (DistributedLockContext) obj;
     return Objects.equals(owner, that.owner) && Objects.equals(expiresAt, that.expiresAt);
   }
 

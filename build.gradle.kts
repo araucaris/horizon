@@ -17,7 +17,7 @@ subprojects {
     apply(plugin = "java-library")
     apply(plugin = "maven-publish")
 
-    group = "dev.araucaris.horizon"
+    group = "dev.horizon"
     version = "1.0-SNAPSHOT"
 
     dependencies {

@@ -1,18 +1,18 @@
-package dev.araucaris.horizon.serdes.jackson;
+package dev.horizon.codec.jackson;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
-import dev.araucaris.horizon.serdes.HorizonSerdes;
-import dev.araucaris.horizon.serdes.SerdesException;
+import dev.horizon.codec.HorizonCodec;
+import dev.horizon.codec.HorizonCodecException;
 import java.util.Arrays;
 
-final class JacksonSerdes implements HorizonSerdes {
+final class JacksonCodec implements HorizonCodec {
 
   private final ObjectMapper mapper;
 
-  JacksonSerdes(ObjectMapper mapper) {
+  JacksonCodec(final ObjectMapper mapper) {
     this.mapper =
         mapper
             .copy()
@@ -23,33 +23,33 @@ final class JacksonSerdes implements HorizonSerdes {
   }
 
   @Override
-  public <T> T decode(byte[] payload, Class<T> type) throws SerdesException {
+  public <T> T decode(final byte[] payload, final Class<T> type) throws HorizonCodecException {
     if (payload == null) {
       return null;
     }
     try {
       return mapper.readValue(payload, type);
-    } catch (InvalidTypeIdException exception) {
-      throw new SerdesException(
+    } catch (final InvalidTypeIdException exception) {
+      throw new HorizonCodecException(
           "Type %s could not be found, when deserializing via Jackson"
               .formatted(exception.getTypeId()),
           exception);
-    } catch (Exception exception) {
-      throw new SerdesException(
+    } catch (final Exception exception) {
+      throw new HorizonCodecException(
           "Could not deserialize via Jackson, preview %s".formatted(Arrays.toString(payload)),
           exception);
     }
   }
 
   @Override
-  public byte[] encode(Object value) throws SerdesException {
+  public byte[] encode(final Object value) throws HorizonCodecException {
     if (value == null) {
       return null;
     }
     try {
       return mapper.writeValueAsBytes(value);
-    } catch (Exception exception) {
-      throw new SerdesException(
+    } catch (final Exception exception) {
+      throw new HorizonCodecException(
           "Could not serialize %s via Jackson".formatted(value.getClass()), exception);
     }
   }

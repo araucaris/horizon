@@ -1,4 +1,4 @@
-package dev.araucaris.horizon.packet;
+package dev.horizon.packet;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;

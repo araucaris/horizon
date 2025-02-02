@@ -1,15 +1,15 @@
-package dev.araucaris.horizon.distributed;
+package dev.horizon.lock;
 
 public final class RetryingException extends RuntimeException {
 
   private final int retryCount;
 
-  RetryingException(int retryCount) {
+  RetryingException(final int retryCount) {
     super("Retried %d times".formatted(retryCount));
     this.retryCount = retryCount;
   }
 
-  public int getRetryCount() {
+  public int retryCount() {
     return retryCount;
   }
 }

@@ -1,7 +1,7 @@
-package dev.araucaris.horizon.distributed;
+package dev.horizon.lock;
 
 import static com.spotify.futures.CompletableFutures.exceptionallyCompose;
-import static dev.araucaris.horizon.distributed.DistributedLockUtils.runLater;
+import static dev.horizon.lock.DistributedLockUtils.runLater;
 import static java.lang.Math.min;
 import static java.time.Duration.ZERO;
 import static java.time.Duration.ofMillis;
@@ -10,8 +10,8 @@ import static java.time.Instant.ofEpochMilli;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.ThreadLocalRandom.current;
 
-import dev.araucaris.horizon.storage.HorizonStorage;
-import dev.araucaris.horizon.storage.StorageException;
+import dev.horizon.cache.HorizonCache;
+import dev.horizon.cache.HorizonCacheException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
@@ -20,62 +20,64 @@ public class DistributedLock {
 
   private final String key;
   private final String pid;
-  private final HorizonStorage storage;
+  private final HorizonCache cache;
 
-  public DistributedLock(String key, HorizonStorage storage) {
+  public DistributedLock(final String key, final HorizonCache cache) {
     this.key = key;
     this.pid = randomUUID().toString();
-    this.storage = storage;
+    this.cache = cache;
   }
 
-  public boolean acquire(Duration ttl) throws DistributedLockException {
-    String lockKey = getLockKey();
+  public boolean acquire(final Duration ttl) throws DistributedLockException {
+    final String lockKey = getLockKey();
     try {
-      Instant now = now();
-      Instant expiresAt = now.plus(ttl);
+      final Instant now = now();
+      final Instant expiresAt = now.plus(ttl);
 
-      DistributedLockContext existingContext = storage.get(lockKey, DistributedLockContext.class);
+      final DistributedLockContext existingContext =
+          cache.get(lockKey, DistributedLockContext.class);
       if (existingContext == null || now.isAfter(ofEpochMilli(existingContext.expiresAt()))) {
-        return storage.set(lockKey, new DistributedLockContext(pid, expiresAt.toEpochMilli()));
+        return cache.set(lockKey, new DistributedLockContext(pid, expiresAt.toEpochMilli()));
       }
 
       return false;
-    } catch (StorageException exception) {
+    } catch (final HorizonCacheException exception) {
       throw new DistributedLockException(
           "Failed to acquire lock %s with ttl %s".formatted(lockKey, ttl), exception);
     }
   }
 
   public boolean release() throws DistributedLockException {
-    String lockKey = getLockKey();
+    final String lockKey = getLockKey();
     try {
-      DistributedLockContext context = storage.get(lockKey, DistributedLockContext.class);
+      final DistributedLockContext context = cache.get(lockKey, DistributedLockContext.class);
       if (context == null) {
         return false;
       }
 
       if (context.owner().equals(pid)) {
-        storage.remove(lockKey);
+        cache.remove(lockKey);
         return true;
       }
 
       return false;
-    } catch (StorageException exception) {
+    } catch (final HorizonCacheException exception) {
       throw new DistributedLockException("Failed to release lock %s".formatted(lockKey), exception);
     }
   }
 
-  public CompletableFuture<Void> execute(Runnable task, Duration delay, Duration until) {
+  public CompletableFuture<Void> execute(
+      final Runnable task, final Duration delay, final Duration until) {
     return execute(task, 0, delay, until, ZERO, now().plus(until));
   }
 
   private CompletableFuture<Void> execute(
-      Runnable action,
-      int retryCount,
-      Duration delay,
-      Duration until,
-      Duration backoffDelay,
-      Instant untilTime) {
+      final Runnable action,
+      final int retryCount,
+      final Duration delay,
+      final Duration until,
+      final Duration backoffDelay,
+      final Instant untilTime) {
     if (now().isAfter(untilTime)) {
       throw new RetryingException(retryCount);
     }
@@ -105,9 +107,11 @@ public class DistributedLock {
     return "lock-" + key;
   }
 
-  private Duration calculateBackoffDelay(Duration delay, Duration until, int retryCount) {
-    long exponentialDelayMillis = min(delay.toMillis() * (1L << retryCount), until.toMillis());
-    long randomPart =
+  private Duration calculateBackoffDelay(
+      final Duration delay, final Duration until, final int retryCount) {
+    final long exponentialDelayMillis =
+        min(delay.toMillis() * (1L << retryCount), until.toMillis());
+    final long randomPart =
         exponentialDelayMillis / 2 + current().nextInt((int) (exponentialDelayMillis / 2));
     return ofMillis(randomPart);
   }

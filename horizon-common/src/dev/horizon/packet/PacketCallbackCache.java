@@ -1,4 +1,4 @@
-package dev.araucaris.horizon.packet.callback;
+package dev.horizon.packet;
 
 import java.util.Map;
 import java.util.UUID;
@@ -9,21 +9,15 @@ public final class PacketCallbackCache {
 
   private final Map<UUID, CompletableFuture<?>> responses = new ConcurrentHashMap<>();
 
-  private PacketCallbackCache() {}
-
-  public static PacketCallbackCache create() {
-    return new PacketCallbackCache();
-  }
-
-  public void add(UUID uniqueId, CompletableFuture<?> responseFuture) {
+  public void add(final UUID uniqueId, final CompletableFuture<?> responseFuture) {
     responses.put(uniqueId, responseFuture);
   }
 
-  public void remove(UUID uniqueId) {
+  public void remove(final UUID uniqueId) {
     responses.remove(uniqueId);
   }
 
-  public CompletableFuture<?> findByUniqueId(UUID uniqueId) {
+  public CompletableFuture<?> findByUniqueId(final UUID uniqueId) {
     return responses.get(uniqueId);
   }
 }
