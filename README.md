@@ -46,26 +46,6 @@ Horizon provides an array of powerful features:
 
 ---
 
-## **Installation**
-
-Add **Horizon** as a dependency in your Java project. To install and use Horizon, you will need a working Redis setup.
-
-- **Maven Dependency**
-```xml
-<dependency>
-    <groupId>dev.horizon</groupId>
-    <artifactId>horizon</artifactId>
-    <version>1.0.0</version>
-</dependency>
-```
-
-- **Gradle Dependency**
-```gradle
-implementation 'dev.horizon:horizon:1.0.0'
-```
-
----
-
 ## **Getting Started**
 
 ### **Quick Setup**
@@ -141,6 +121,19 @@ Send a packet and handle asynchronous responses.
 horizon.<ExampleResponsePacket>request("request_topic", new ExampleRequestPacket("Request data"))
        .thenAccept(response -> 
            System.out.println("Received response: " + response.getContent()));
+```
+
+In packet handler. You can return response wrapped into CompletableFuture, or not doesn't matter but we support it!
+
+```java
+  @PacketHandler
+  public CompletableFuture<Packet> receive(ExampleRequestPacket packet) {
+  ExampleResponsePacket response = new ExampleResponsePacket(
+        request.getContent() + " Pong!");
+    // Return a CompletableFuture for asynchronous processing
+    return CompletableFuture.completedFuture(
+        response.dispatchTo(request.getUniqueId()));
+  }
 ```
 
 ---
