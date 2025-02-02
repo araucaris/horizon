@@ -1,175 +1,336 @@
-# **Horizon (horyzont)**
+# **Horizon**
 
-Horizon is a **distributed messaging framework** designed for:
+Horizon is a **distributed messaging framework** built on top of Redis, providing developers with a robust toolkit for inter-process communication, synchronization, and message handling. It simplifies the complexities of distributed systems by offering the following core functionalities:
+
 - **Packet handling**
 - **Async communication**
 - **Publish-subscribe (pub-sub) messaging**
 - **Key-value storage**
 - **Distributed locking**
 
-It is built on top of Redis and provides a simple and powerful API for developers to work with inter-process communication and synchronization.
+---
+
+## **Table of Contents**
+
+- [Features](#features)
+- [Installation](#installation)
+- [Getting Started](#getting-started)
+    - [Quick Setup](#quick-setup)
+    - [Code Example](#code-example)
+- [Core API Overview](#core-api-overview)
+    - [Publishing Messages](#1-publishing-messages)
+    - [Subscribing to Topics](#2-subscribing-to-topics)
+    - [Request-Response Communication](#3-request-response-communication)
+    - [Distributed Locking](#4-distributed-locking)
+        - [Basic Lock Example](#distributed-lock-basic-example)
+        - [Retries and Backoff Example](#distributed-lock-retries-and-backoff)
+    - [Using Horizon Cache](#5-horizon-cache)
+        - [Storing Data](#horizon-cache-storing-data)
+        - [Retrieving Data](#horizon-cache-retrieving-data)
+        - [Managing Cache Entries](#horizon-cache-managing-entries)
+- [How It Works](#how-it-works)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
 ## **Features**
-- **Publish & Subscribe**: Efficient pub-sub messaging using Redis.
-- **Packet Request/Response**: Easy handling of request/response message patterns.
-- **Distributed Locks**: Simplified implementation of distributed locks for synchronization.
-- **Caching**: Powerful key-based caching using Redis.
-- **Custom Packet Handlers**: Seamlessly handle custom packets using annotations.
+
+### **Core Functionalities**
+Horizon provides an array of powerful features:
+- **Pub-Sub** for asynchronous messaging between distributed components.
+- **Packet Request/Response** for building efficient RPC-like interactions.
+- **Distributed Locks** for creating fault-tolerant synchronization mechanisms.
+- **Caching** for managing distributed key-value pairs.
+- **Custom Packet Handlers** with annotations for clean code.
 
 ---
 
 ## **Installation**
-Add the Horizon dependency to your Java project via your dependency manager. Ensure you have Redis running and accessible to your application.
+
+Add **Horizon** as a dependency in your Java project. To install and use Horizon, you will need a working Redis setup.
+
+- **Maven Dependency**
+```xml
+<dependency>
+    <groupId>dev.horizon</groupId>
+    <artifactId>horizon</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+- **Gradle Dependency**
+```gradle
+implementation 'dev.horizon:horizon:1.0.0'
+```
 
 ---
 
 ## **Getting Started**
 
-Here is an example to demonstrate the core functionalities of Horizon:
+### **Quick Setup**
 
-### **Example Code**
+1. Ensure Redis is installed and running.
+2. Add the dependency to your project.
+3. Initialize Horizon via `HorizonCreator.creator()`.
+
+### **Code Example**
+
 ```java
 public static void main(String[] args) {
-  try (Horizon horizon = HorizonCreator.creator(RedisClient.create()).create()) {
+    // Initialize Horizon instance
+    try (Horizon horizon = HorizonCreator.creator(RedisClient.create()).create()) {
+        // Subscribe to topics
+        horizon.subscribe("example_topic", new ExamplePacketHandler());
+        
+        // Publish a message
+        horizon.publish("example_topic", new ExamplePacket("Hello, Horizon!"));
 
-    // Subscribing to a topic
-    horizon.subscribe("tests", new ExampleListener());
-    horizon.publish("tests", new ExamplePacket("Hello, world!"));
-
-    // Async packet request/response
-    horizon
-        .<ExampleResponse>request("tests", new ExampleRequest("Hello, world!"))
-        .thenAccept(response -> System.out.println("Received response: " + response.getContent()))
-        .join();
-
-    // Distributed locking example
-    AtomicInteger counter = new AtomicInteger(0);
-    for (int j = 0; j < 10; j++) {
-      final int i = j;
-      final DistributedLock lock = horizon.getLock("my_lock");
-      lock.execute(
-              () -> {
-                System.out.println("Thread " + i + " acquired the lock!");
-                Thread.sleep(100); // Simulate task
-              },
-              Duration.ofMillis(10L),
-              Duration.ofSeconds(5L))
-          .whenComplete(
-              (unused, throwable) -> {
-                counter.incrementAndGet();
-                System.out.println("Thread " + i + " released the lock!");
-              });
+        // Distributed locking
+        DistributedLock lock = horizon.getLock("example_lock");
+        lock.execute(() -> System.out.println("Critical section executed."), 
+                      Duration.ofMillis(100), 
+                      Duration.ofSeconds(5));
+    } catch (Exception e) {
+        e.printStackTrace();
     }
-
-    // Wait for all threads to finish
-    while (counter.get() < 10) {
-      Thread.sleep(100);
-      System.out.println("waiting for all threads to finish (" + counter.get() + "/10)");
-    }
-  } catch (final Exception exception) {
-    exception.printStackTrace();
-    System.exit(1);
-  }
 }
 ```
 
-### **Custom Packets and Handlers**
-```java
-public static class ExamplePacket extends Packet {
-  private String content;
-
-  @JsonCreator
-  public ExamplePacket(final String content) {
-    this.content = content;
-  }
-
-  public String getContent() {
-    return content;
-  }
-}
-
-public static class ExampleListener {
-
-  @PacketHandler
-  public void handle(final ExamplePacket packet) {
-    System.out.printf(
-        "Received packet with content %s and uid %s%n", packet.getContent(), packet.getUniqueId());
-  }
-
-  @PacketHandler
-  public Packet handle(final ExampleRequest request) {
-    return new ExampleResponse("Response to: " + request.getContent())
-        .pointAt(request.getUniqueId());
-  }
-}
-```
+For detailed examples, see the usage sections below.
 
 ---
 
 ## **Core API Overview**
 
-### 1. **Creating a Horizon Instance**
-To create an instance of Horizon with default settings:
+### **1. Publishing Messages**
+
+Send a message to a Redis pub-sub channel using the `publish` method.
+
 ```java
-Horizon horizon = HorizonCreator.creator(RedisClient.create()).create();
+horizon.publish("channel_name", new ExamplePacket("Hello, World!"));
 ```
 
-### 2. **Publishing Messages**
-Publish a packet to a specific channel:
+---
+
+### **2. Subscribing to Topics**
+
+Register a topic listener using the `subscribe` method. Define handlers with `@PacketHandler`.
+
 ```java
-horizon.publish("channel_name", new ExamplePacket("Hello, Horizon!"));
+horizon.subscribe("topic_name", new MyPacketHandler());
 ```
 
-### 3. **Subscribing to Topics**
-Subscribe to a topic and define a listener:
+Example handler:
 ```java
-horizon.subscribe("topic_name", new ExampleListener());
+public static class MyPacketHandler {
+    @PacketHandler
+    public void onPacket(ExamplePacket packet) {
+        System.out.printf("Received: %s%n", packet.getContent());
+    }
+}
 ```
 
-### 4. **Request-Response Communication**
-Send a request and handle the response asynchronously:
+---
+
+### **3. Request-Response Communication**
+
+Send a packet and handle asynchronous responses.
+
 ```java
-horizon.<ExampleResponse>request("channel_name", new ExampleRequest("Request Data"))
-       .thenAccept(response -> System.out.println(response.getContent()));
+horizon.<ExampleResponsePacket>request("request_topic", new ExampleRequestPacket("Request data"))
+       .thenAccept(response -> 
+           System.out.println("Received response: " + response.getContent()));
 ```
 
-### 5. **Distributed Locking**
-Use distributed locks for synchronization:
+---
+
+### **4. Distributed Locking**
+
+Distributed locks allow synchronizing tasks across processes. You can acquire/execute critical tasks using `DistributedLock`.
+
+#### **Distributed Lock: Basic Example**
+
 ```java
-DistributedLock lock = horizon.getLock("my_lock");
+DistributedLock lock = horizon.getLock("resource_lock");
+
+try {
+    // Acquire the lock with 5-second TTL
+    if (lock.acquire(Duration.ofSeconds(5))) {
+        System.out.println("Lock acquired. Performing critical operation...");
+    } else {
+        System.out.println("Unable to acquire lock.");
+    }
+} finally {
+    // Always release the lock
+    lock.release();
+}
+```
+
+#### **Distributed Lock: Retries and Backoff**
+
+```java
 lock.execute(() -> {
-    // Critical section
-}, Duration.ofMillis(10), Duration.ofSeconds(5));
+    System.out.println("Safely executing a critical section with retries.");
+}, Duration.ofMillis(50), Duration.ofSeconds(10));
 ```
+
+---
+
+### **5. Horizon Cache**
+
+Horizon Cache is a Redis-backed mechanism to manage key-value pairs using Redis hashes. It simplifies data storage, retrieval, and removal while working seamlessly with **HorizonCodec**. It is particularly useful for distributed systems requiring scalable caching solutions.
+
+When using Horizon's caching mechanism, **ensure the object being encoded/decoded has a no-args constructor**, especially when using JSON-based codecs like Jackson.
+
+#### **Key Features**:
+- Serialize/deserialize objects automatically via `HorizonCodec`.
+- Each cache entry is stored under a unique Redis `key`.
+- Supports operations for storing, retrieving, removing, and clearing entries.
+- Allows handling nested/complex objects as long as they comply with serialization rules of the used codec.
+
+---
+
+#### **Storing Data**
+
+Adding data to the cache is straightforward with `set()`. You can store objects mapped to a unique `field` for a given cache `key`.
+
+```java
+HorizonCache cache = horizon.getCache("users_cache");
+
+// Add an object to the cache
+cache.set("user123", new User("john_doe"));
+System.out.println("Data stored in cache successfully.");
+```
+
+> **Note:** Ensure your object (e.g., `User`) has a valid no-args constructor for serialization and deserialization.
+
+---
+
+#### **Retrieving Data**
+
+You can retrieve cached data using the `get()` method, specifying the field and the expected type.
+
+```java
+User user = cache.get("user123", User.class);
+if (user != null) {
+    System.out.println("Retrieved user from cache: " + user.name());
+} else {
+    System.out.println("User not found in cache!");
+}
+```
+
+Horizon ensures objects are automatically deserialized to the specified type using the underlying codec.
+
+---
+
+#### **Removing Entries**
+
+If you no longer need specific entries in the cache, you can remove them using their `field`. This avoids redundancy and ensures efficient resource usage.
+
+```java
+// Remove a specific entry from the cache
+boolean removed = cache.remove("user123");
+if (removed) {
+    System.out.println("Cache entry removed.");
+} else {
+    System.out.println("Failed to remove entry or it doesn't exist.");
+}
+```
+
+---
+
+#### **Clearing Entire Cache**
+
+To clear all data stored in a cache instance, use the `clear()` method. This operation deletes all fields associated with the Redis key representing the cache.
+
+```java
+// Clear all entries in the cache
+long clearedCount = cache.clear();
+System.out.println("Total entries cleared: " + clearedCount);
+```
+
+---
+
+#### **Enhanced Usage Example**
+
+Below is an end-to-end usage example of Horizon Cache:
+
+```java
+HorizonCache cache = horizon.getCache("product_cache");
+
+// Store an object in the cache
+Product product = new Product("P123", "Laptop", 1200.00);
+cache.set("productId123", product);
+
+// Retrieve and use the data
+Product cachedProduct = cache.get("productId123", Product.class);
+if (cachedProduct != null) {
+    System.out.printf("Product Name: %s, Price: %.2f%n", cachedProduct.name(), cachedProduct.price());
+}
+
+// Remove specific data
+cache.remove("productId123");
+
+// Clear the entire cache
+cache.clear();
+System.out.println("Product cache is now empty.");
+```
+
+---
+
+#### **Error Handling**
+
+All cache operations (`set`, `get`, `remove`, `clear`) throw `HorizonCacheException`, allowing users to handle errors gracefully. The most common scenarios include:
+- Redis connection issues.
+- Serialization/deserialization errors.
+
+Example:
+```java
+try {
+    cache.set("testKey", new TestObject());
+} catch (HorizonCacheException e) {
+    System.err.println("Failed to store data in cache: " + e.getMessage());
+}
+```
+
+By ensuring proper error handling, applications using Horizon Cache can remain robust and reliable.
 
 ---
 
 ## **How It Works**
-Horizon is built on top of Redis, leveraging its:
-- **Pub-Sub**: Communication between distributed components.
-- **Key-based Storage**: Used for caching and managing locks.
-- **Asynchronous APIs**: Non-blocking, efficient communication.
+
+Horizon leverages Redis as its backbone, utilizing its features to implement:
+1. **Pub-Sub**: Efficient message broadcasting with a publish-subscribe pattern.
+2. **Key-based Storage**: High-performance key-value caching using Redis hashes.
+3. **Asynchronous Request-Handling**: Non-blocking operations with completion callbacks.
+4. **Distributed Locks**: Ensures process synchronization using atomic Redis operations.
 
 ### **Key Components**
-1. **Packets**: Represent messages exchanged between components.
-2. **Listeners**: Handle incoming messages, using `@PacketHandler` annotations.
-3. **DistributedLock**: Manages synchronization across distributed systems.
-4. **HorizonCodec**: Provides serialization/deserialization of packets.
+- **Packets**: Represents the unit of communication (custom serializable objects).
+- **Listeners**: Handle incoming packets via annotations like `@PacketHandler`.
+- **DistributedLock**: Used for synchronization of distributed tasks.
+- **HorizonCache**: Provides a simple interface for Redis-backed key-value storage.
 
 ---
 
 ## **Contributing**
-Contributions are welcome! Feel free to fork the repository and submit pull requests for new features, bug fixes, or documentation improvements.
+
+We welcome contributions to Horizon! Whether it's reporting a bug, suggesting new features, or improving documentation:
+- Fork the repository
+- Create a new branch
+- Submit a pull request
+
+For any questions or discussions, feel free to open an issue.
 
 ---
 
 ## **License**
-Horizon is licensed under the [MIT License](LICENSE).
+
+Horizon is licensed under the **MIT License**. For more details, see the [LICENSE](LICENSE) file.
 
 ---
 
 <p align="center">
-  <img src="https://count.getloli.com/get/@:horizon?theme=rule33" alt="Usage Counter"/>
+  <img src="https://count.getloli.com/get/@a?theme=rule33" alt="Usage Counter"/>
 </p>

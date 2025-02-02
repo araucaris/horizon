@@ -17,8 +17,8 @@ public class HorizonCache {
     this.connection = horizon.connection();
   }
 
-  public <T> boolean set(final String field, final T value) throws HorizonCacheException {
-    return performSafely(
+  public <T> void set(final String field, final T value) throws HorizonCacheException {
+    performSafely(
         () -> connection.sync().hset(key, field, codec.encode(value)),
         () -> "Failed to put %s at %s in redis-cache".formatted(value, field));
   }
