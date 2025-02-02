@@ -13,7 +13,7 @@ public static void main(String[] args) {
     horizon.publish("tests", new ExamplePacket("Hello, world!"));
 
     horizon
-        .<ExampleCallback>request("tests", new ExampleCallback("Hello, world!"))
+        .<ExampleResponse>request("tests", new ExampleRequest("Hello, world!"))
         .thenAccept(response -> System.out.println("Received response: " + response.getContent()))
         .join();
 
@@ -68,14 +68,30 @@ public static class ExamplePacket extends Packet {
   }
 }
 
-public static class ExampleCallback extends Packet {
+public static class ExampleRequest extends Packet {
 
   private String content;
 
   @JsonCreator
-  private ExampleCallback() {}
+  private ExampleRequest() {}
 
-  public ExampleCallback(final String content) {
+  public ExampleRequest(final String content) {
+    this.content = content;
+  }
+
+  public String getContent() {
+    return content;
+  }
+}
+
+public static class ExampleResponse extends Packet {
+
+  private String content;
+
+  @JsonCreator
+  private ExampleResponse() {}
+
+  public ExampleResponse(final String content) {
     this.content = content;
   }
 
@@ -93,9 +109,9 @@ private static class ExampleListener {
   }
 
   @PacketHandler
-  public Packet handle(final ExampleCallback request) {
+  public Packet handle(final ExampleRequest request) {
     // any response can be returned, just make sure it's pointed at the right request id
-    return new ExampleCallback("HIII " + request.getContent()).pointAt(request.getUniqueId());
+    return new ExampleResponse("HIII " + request.getContent()).pointAt(request.getUniqueId());
   }
 }
 ```
