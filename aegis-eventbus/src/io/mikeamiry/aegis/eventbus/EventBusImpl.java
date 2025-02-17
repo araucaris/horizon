@@ -44,10 +44,10 @@ final class EventBusImpl implements EventBus {
 
     definition
         .invocations()
-        .forEach(invocation -> notifySubscribedMethods(invocation, observer, event));
+        .forEach(invocation -> notifyObservedMethods(invocation, observer, event));
   }
 
-  private void notifySubscribedMethods(
+  private void notifyObservedMethods(
       final MethodHandle invocation, final Observer observer, final Event event)
       throws EventPublishingException {
     try {
