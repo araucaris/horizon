@@ -1,12 +1,8 @@
 package io.mikeamiry.aegis.eventbus;
 
-public interface Subscriber {
+public interface Observer {
 
   default String topic() {
     return "";
-  }
-
-  default boolean observer() {
-    return false;
   }
 }

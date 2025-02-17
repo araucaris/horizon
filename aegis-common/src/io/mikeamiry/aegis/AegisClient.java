@@ -7,7 +7,7 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.mikeamiry.aegis.cache.KeyValueCache;
 import io.mikeamiry.aegis.cache.LocalCacheObserver;
-import io.mikeamiry.aegis.eventbus.Subscriber;
+import io.mikeamiry.aegis.eventbus.Observer;
 import io.mikeamiry.aegis.lock.DistributedLock;
 import io.mikeamiry.aegis.packet.Packet;
 import io.mikeamiry.aegis.packet.PacketBroker;
@@ -88,8 +88,8 @@ final class AegisClient implements Closeable, Aegis {
   }
 
   @Override
-  public void observe(final Subscriber subscriber) throws PacketBrokerException {
-    packetBroker.observe(subscriber);
+  public void observe(final Observer observer) throws PacketBrokerException {
+    packetBroker.observe(observer);
   }
 
   @Override

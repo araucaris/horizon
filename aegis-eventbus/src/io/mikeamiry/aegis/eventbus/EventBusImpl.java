@@ -6,26 +6,26 @@ import java.lang.invoke.MethodHandle;
 
 final class EventBusImpl implements EventBus {
 
-  private final SubscriptionService subscriptionService;
+  private final ObservationService observationService;
   private final ResultProcessorService resultProcessorService;
 
   EventBusImpl(
-      final SubscriptionService subscriptionService,
+      final ObservationService observationService,
       final ResultProcessorService resultProcessorService) {
-    this.subscriptionService = subscriptionService;
+    this.observationService = observationService;
     this.resultProcessorService = resultProcessorService;
   }
 
   @Override
-  public void subscribe(final Subscriber subscriber) throws SubscribingException {
-    subscriptionService.subscribe(subscriber);
+  public void observe(final Observer observer) throws ObservingException {
+    observationService.observe(observer);
   }
 
   @Override
   public void publish(final Event event, final String... topics) throws EventPublishingException {
-    subscriptionService
-        .getSubscriptionsByEventType(event.getClass())
-        .forEach(subscription -> notifySubscription(subscription, event, topics));
+    observationService
+        .getObservationsByEventType(event.getClass())
+        .forEach(definition -> notifySubscription(definition, event, topics));
   }
 
   @Override
@@ -35,23 +35,23 @@ final class EventBusImpl implements EventBus {
   }
 
   private void notifySubscription(
-      final Subscription subscription, final Event event, final String[] topics)
+      final ObserverDefinition definition, final Event event, final String[] topics)
       throws EventPublishingException {
-    final Subscriber subscriber = subscription.subscriber();
-    if (hasSpecifiedTopic(topics) && isExcludedSubscription(subscriber, topics)) {
+    final Observer observer = definition.observer();
+    if (hasSpecifiedTopic(topics) && isExcludedSubscription(observer, topics)) {
       return;
     }
 
-    subscription
+    definition
         .invocations()
-        .forEach(invocation -> notifySubscribedMethods(invocation, subscriber, event));
+        .forEach(invocation -> notifySubscribedMethods(invocation, observer, event));
   }
 
   private void notifySubscribedMethods(
-      final MethodHandle invocation, final Subscriber subscriber, final Event event)
+      final MethodHandle invocation, final Observer observer, final Event event)
       throws EventPublishingException {
     try {
-      final Object returnedValue = invocation.invoke(subscriber, event);
+      final Object returnedValue = invocation.invoke(observer, event);
       if (returnedValue != null && resultProcessorService.isProcessingRequired()) {
         resultProcessorService.tryProcessing(event, returnedValue);
       }
@@ -66,7 +66,7 @@ final class EventBusImpl implements EventBus {
     return topics.length > 0;
   }
 
-  private boolean isExcludedSubscription(final Subscriber subscriber, final String[] topics) {
-    return stream(topics).noneMatch(topic -> subscriber.topic().equals(topic));
+  private boolean isExcludedSubscription(final Observer observer, final String[] topics) {
+    return stream(topics).noneMatch(topic -> observer.topic().equals(topic));
   }
 }

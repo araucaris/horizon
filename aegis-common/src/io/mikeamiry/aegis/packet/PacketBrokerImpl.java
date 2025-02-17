@@ -8,7 +8,7 @@ import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.makeamiry.aegis.codec.Codec;
 import io.mikeamiry.aegis.eventbus.EventBus;
-import io.mikeamiry.aegis.eventbus.Subscriber;
+import io.mikeamiry.aegis.eventbus.Observer;
 import io.vavr.control.Option;
 import java.util.Map;
 import java.util.Set;
@@ -51,8 +51,8 @@ final class PacketBrokerImpl implements PacketBroker {
   private final EventBus eventBus;
   private final StatefulRedisConnection<String, byte[]> connection;
   private final StatefulRedisPubSubConnection<String, byte[]> pubSubConnection;
-  private final Map<String, CompletableFuture<?>> callbacks = new ConcurrentHashMap<>();
-  private final Set<String> subscribedTopics = ConcurrentHashMap.newKeySet();
+  private final Map<String, CompletableFuture<?>> callbacks;
+  private final Set<String> observedTopics;
 
   PacketBrokerImpl(final Codec codec, final EventBus eventBus, final RedisClient redisClient) {
     this.eventBus = eventBus;
@@ -61,6 +61,8 @@ final class PacketBrokerImpl implements PacketBroker {
     final RedisCodec<String, byte[]> stringByteCodec = new StringByteCodec();
     this.connection = redisClient.connect(stringByteCodec);
     this.pubSubConnection = redisClient.connectPubSub(stringByteCodec);
+    this.callbacks = new ConcurrentHashMap<>();
+    this.observedTopics = ConcurrentHashMap.newKeySet();
     observeCallbacks();
   }
 
@@ -90,9 +92,9 @@ final class PacketBrokerImpl implements PacketBroker {
         });
   }
 
-  public void observe(final Subscriber subscriber) throws PacketBrokerException {
-    observeEventBus(subscriber);
-    observePacketBroker(subscriber);
+  public void observe(final Observer observer) throws PacketBrokerException {
+    observeEventBus(observer);
+    observePacketBroker(observer);
   }
 
   public void publish(final String channel, final Packet packet) throws PacketBrokerException {
@@ -128,26 +130,26 @@ final class PacketBrokerImpl implements PacketBroker {
     }
   }
 
-  private void observeEventBus(final Subscriber subscriber) throws PacketBrokerException {
+  private void observeEventBus(final Observer observer) throws PacketBrokerException {
     try {
-      eventBus.subscribe(subscriber);
+      eventBus.observe(observer);
     } catch (final Exception exception) {
       throw new PacketBrokerException(
           "Could not subscribe to events on channel named %s due to unexpected exception."
-              .formatted(subscriber.topic()),
+              .formatted(observer.topic()),
           exception);
     }
   }
 
-  private boolean observePacketBroker(final Subscriber subscriber) throws PacketBrokerException {
-    final String topic = subscriber.topic();
+  private boolean observePacketBroker(final Observer observer) throws PacketBrokerException {
+    final String topic = observer.topic();
     return observePacketBroker(topic, message -> delegateToEventBus(topic, message));
   }
 
   private boolean observePacketBroker(final String topic, final Consumer<byte[]> callback)
       throws PacketBrokerException {
     try {
-      if (subscribedTopics.add(topic)) {
+      if (observedTopics.add(topic)) {
         pubSubConnection.addListener(new PacketDelegate(callback));
         pubSubConnection.sync().subscribe(topic);
         return true;

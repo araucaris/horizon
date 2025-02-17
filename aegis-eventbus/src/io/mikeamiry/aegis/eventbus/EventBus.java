@@ -2,7 +2,7 @@ package io.mikeamiry.aegis.eventbus;
 
 public sealed interface EventBus permits EventBusImpl {
 
-  void subscribe(Subscriber subscriber) throws SubscribingException;
+  void observe(Observer observer) throws ObservingException;
 
   void publish(Event event, String... targets) throws EventPublishingException;
 

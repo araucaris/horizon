@@ -5,6 +5,6 @@ public final class EventBusFactory {
   private EventBusFactory() {}
 
   public static EventBus create() {
-    return new EventBusImpl(new SubscriptionService(), new ResultProcessorService());
+    return new EventBusImpl(new ObservationService(), new ResultProcessorService());
   }
 }

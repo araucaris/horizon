@@ -1,6 +1,6 @@
 package io.mikeamiry.aegis.packet;
 
-import io.mikeamiry.aegis.eventbus.Subscriber;
+import io.mikeamiry.aegis.eventbus.Observer;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -17,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public sealed interface PacketBroker permits PacketBrokerImpl {
 
-  void observe(final Subscriber subscriber) throws PacketBrokerException;
+  void observe(final Observer observer) throws PacketBrokerException;
 
   void publish(final String channel, final Packet packet) throws PacketBrokerException;
 

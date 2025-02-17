@@ -4,7 +4,7 @@ import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.mikeamiry.aegis.cache.KeyValueCache;
-import io.mikeamiry.aegis.eventbus.Subscriber;
+import io.mikeamiry.aegis.eventbus.Observer;
 import io.mikeamiry.aegis.lock.DistributedLock;
 import io.mikeamiry.aegis.packet.Packet;
 import io.mikeamiry.aegis.packet.PacketBrokerException;
@@ -25,7 +25,7 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>- **Request/Response Mechanism**: Enables asynchronous communication using serialized {@link
  * Packet} objects. - **Observation**: Facilitates subscribing to topics for real-time updates using
- * a {@link Subscriber}. - **Publishing Messages**: Allows the publication of messages to specific
+ * a {@link Observer}. - **Publishing Messages**: Allows the publication of messages to specific
  * channels using {@link Packet} objects. - **Key-Value Caching**: Provides remote and locally
  * cached storage mechanisms through the {@link KeyValueCache} interface. - **Distributed Locks**:
  * Offers distributed locking mechanisms using keys to ensure concurrency control via {@link
@@ -36,7 +36,7 @@ import java.util.concurrent.CompletableFuture;
  * <p>Methods included in this interface cover a range of functionalities:
  *
  * <p>- `request(String, Packet)`: Sends a request to a channel and asynchronously waits for a
- * response. - `observe(Subscriber)`: Registers a {@link Subscriber} to observe packets or events on
+ * response. - `observe(Observer)`: Registers a {@link Observer} to observe packets or events on
  * relevant topics. - `publish(String, Packet)`: Publishes a {@link Packet} to a channel for
  * consumption by observers. - `getRemoteCache(String)`, `getLocalCache(String)`,
  * `getLocalCache(String, int)`: Retrieve or create caches for efficient data storage. -
@@ -52,7 +52,7 @@ public sealed interface Aegis extends Closeable permits AegisClient {
 
   <T extends Packet> CompletableFuture<T> request(String channel, Packet request);
 
-  void observe(Subscriber subscriber) throws PacketBrokerException;
+  void observe(Observer observer) throws PacketBrokerException;
 
   void publish(String channel, Packet packet) throws PacketBrokerException;
 

@@ -1,10 +1,10 @@
 package io.mikeamiry.aegis.cache;
 
 import io.mikeamiry.aegis.Aegis;
-import io.mikeamiry.aegis.eventbus.Subscribe;
-import io.mikeamiry.aegis.eventbus.Subscriber;
+import io.mikeamiry.aegis.eventbus.Observe;
+import io.mikeamiry.aegis.eventbus.Observer;
 
-public final class LocalCacheObserver implements Subscriber {
+public final class LocalCacheObserver implements Observer {
 
   private final Aegis aegis;
 
@@ -21,12 +21,7 @@ public final class LocalCacheObserver implements Subscriber {
     return "aegis-caches";
   }
 
-  @Override
-  public boolean observer() {
-    return true;
-  }
-
-  @Subscribe
+  @Observe
   public void onInvalidate(final CacheInvalidate invalidate) {
     if (invalidate.identity().equals(aegis.identity())) {
       System.out.println("ignoring local cache invalidate");
