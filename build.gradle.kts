@@ -17,16 +17,13 @@ subprojects {
     apply(plugin = "java-library")
     apply(plugin = "maven-publish")
 
-    group = "dev.horizon"
-    version = "1.0-SNAPSHOT"
-
-    dependencies {
-        compileOnly("org.jetbrains:annotations:25.0.0")
-    }
+    group = "io.mikeamiry.aegis"
+    version = "2.0.1-SNAPSHOT"
 
     repositories {
         mavenCentral()
-        maven("https://repo.shiza.dev/releases")
+//        maven("https://repo.shiza.dev/releases") (Doesn't respond at the moment of writing
+    //        this, so the eventbus was moved into a separate module (aegis-eventbus)
     }
 
     java {
