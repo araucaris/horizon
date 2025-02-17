@@ -18,7 +18,7 @@ subprojects {
     apply(plugin = "java-library")
 
     group = "io.mikeamiry.aegis"
-    version = "2.0.3"
+    version = "2.0.3-SNAPSHOT"
 
     repositories {
         mavenCentral()
