@@ -1,4 +1,4 @@
-package io.mikeamiry.aegis.packet;
+package io.mikeamiry.aegis.broker;
 
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import java.util.function.Consumer;

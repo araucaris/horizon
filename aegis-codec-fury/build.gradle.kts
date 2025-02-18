@@ -5,7 +5,7 @@ plugins {
 }
 
 dependencies {
-    compileOnly(project(":aegis-codec-common"))
+    implementation(project(":aegis-codec-common"))
     implementation(libs.fury.core)
 }
 

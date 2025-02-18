@@ -1,4 +1,4 @@
-package io.mikeamiry.aegis.packet;
+package io.mikeamiry.aegis.broker;
 
 import io.mikeamiry.aegis.eventbus.Event;
 import java.io.Serializable;

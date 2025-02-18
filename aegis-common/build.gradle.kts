@@ -7,6 +7,8 @@ plugins {
 dependencies {
     implementation(project(":aegis-codec-common"))
     implementation(project(":aegis-store"))
+    implementation(project(":aegis-lock"))
+    implementation(project(":aegis-broker"))
     implementation(project(":aegis-eventbus"))
 
     implementation(libs.lettuce.core)

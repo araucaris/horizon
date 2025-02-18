@@ -1,4 +1,4 @@
-package io.mikeamiry.aegis.packet;
+package io.mikeamiry.aegis.broker;
 
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.UTF_8;

@@ -1,4 +1,4 @@
-package io.mikeamiry.aegis.packet;
+package io.mikeamiry.aegis.broker;
 
 /**
  * Represents an exception that may be thrown by the PacketBroker or related classes when an

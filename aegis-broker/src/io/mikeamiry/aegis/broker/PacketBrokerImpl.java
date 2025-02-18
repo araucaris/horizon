@@ -1,4 +1,4 @@
-package io.mikeamiry.aegis.packet;
+package io.mikeamiry.aegis.broker;
 
 import static java.util.UUID.randomUUID;
 

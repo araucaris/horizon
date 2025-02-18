@@ -4,10 +4,10 @@ import static java.lang.ProcessHandle.current;
 
 import io.lettuce.core.RedisClient;
 import io.makeamiry.aegis.codec.Codec;
+import io.mikeamiry.aegis.broker.PacketBroker;
+import io.mikeamiry.aegis.broker.PacketBrokerFactory;
 import io.mikeamiry.aegis.eventbus.EventBus;
 import io.mikeamiry.aegis.eventbus.EventBusFactory;
-import io.mikeamiry.aegis.packet.PacketBroker;
-import io.mikeamiry.aegis.packet.PacketBrokerFactory;
 
 /**
  * A factory class for creating instances of the {@link Aegis} interface.

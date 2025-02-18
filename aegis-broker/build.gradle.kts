@@ -6,9 +6,10 @@ plugins {
 
 dependencies {
     implementation(project(":aegis-codec-common"))
-    implementation(libs.jackson.databind)
+    implementation(project(":aegis-eventbus"))
+    compileOnly(libs.lettuce.core)
 }
 
 aegisPublish {
-    artifactId = "aegis-codec-jackson"
+    artifactId = "aegis-broker"
 }
