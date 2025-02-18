@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  * operations on tasks with the help of asynchronous execution using {@link
  * DistributedLockExecutor}.
  *
- * <p>The lock is identified by a unique key (`lockKey`) and an identity string (`identity`)
+ * <p>The lock is identified by a unique key (`key`) and an identity string (`identity`)
  * representing the owner. The lock manages its expiration (`until`) and allows retry attempts with
  * configurable delay and maximum tries. The class provides automatic TTL (time-to-live) updates
  * while the lock is being held.
@@ -51,7 +51,7 @@ public final class DistributedLock {
 
   private static final Logger log = Logger.getLogger(DistributedLock.class.getName());
 
-  private final String lockKey;
+  private final String key;
   private final String identity;
   private final DistributedLockExecutor executor;
   private final Duration until;
@@ -59,13 +59,13 @@ public final class DistributedLock {
   private ScheduledFuture<?> future;
 
   private DistributedLock(
-      final String lockKey,
+      final String key,
       final String identity,
       final Duration delay,
       final Duration until,
       final int tries,
       final KeyValueStore store) {
-    this.lockKey = lockKey;
+    this.key = key;
     this.identity = identity;
     this.until = until;
     this.store = store;
@@ -73,66 +73,53 @@ public final class DistributedLock {
   }
 
   public static DistributedLock create(
-      final String lockKey,
+      final String key,
       final String identity,
       final Duration delay,
       final Duration until,
       final int tries,
       final KeyValueStore store) {
-    return new DistributedLock(lockKey, identity, delay, until, tries, store);
+    return new DistributedLock(key, identity, delay, until, tries, store);
   }
 
   public static DistributedLock create(
-      final String lockKey, final String identity, final int tries, final KeyValueStore store) {
-    return create(lockKey, identity, ofMillis(150L), ofSeconds(3L), tries, store);
+      final String key, final String identity, final int tries, final KeyValueStore store) {
+    return create(key, identity, ofMillis(150L), ofSeconds(3L), tries, store);
   }
 
   public <T> CompletableFuture<T> supply(final Supplier<T> supplier) {
     return executor.supply(
         () -> {
-          final String ownerIdentity = store.get(lockKey);
-          if (ownerIdentity == null) {
-            final boolean acquired = store.set(lockKey, identity, until, true);
-            if (!acquired) {
-              throw new DistributedLockException("Lock is already held by another process.");
-            }
-
-            try {
-              startWatching();
-              return supplier.get();
-            } finally {
-              stopWatching();
-              store.del(lockKey);
-            }
+          final boolean acquired = store.set(key, identity, until, true);
+          if (!acquired) {
+            throw new DistributedLockException("Lock is already held by another process.");
           }
 
-          throw new DistributedLockException(
-              "Lock is currently held by %s".formatted(ownerIdentity));
+          try {
+            startWatching();
+            return supplier.get();
+          } finally {
+            stopWatching();
+            store.del(key);
+          }
         });
   }
 
   public CompletableFuture<Void> execute(final Runnable task) {
     return executor.execute(
         () -> {
-          final String ownerIdentity = store.get(lockKey);
-          if (ownerIdentity == null) {
-            final boolean acquired = store.set(lockKey, identity, until, true);
-            if (!acquired) {
-              throw new DistributedLockException("Lock is already held by another process.");
-            }
-
-            try {
-              startWatching();
-              task.run();
-            } finally {
-              stopWatching();
-              store.del(lockKey);
-            }
-            return;
+          final boolean acquired = store.set(key, identity, until, true);
+          if (!acquired) {
+            throw new DistributedLockException("Lock is already held by another process.");
           }
 
-          throw new DistributedLockException(
-              "Lock is currently held by %s".formatted(ownerIdentity));
+          try {
+            startWatching();
+            task.run();
+          } finally {
+            stopWatching();
+            store.del(key);
+          }
         });
   }
 
@@ -141,7 +128,7 @@ public final class DistributedLock {
         SCHEDULER.scheduleAtFixedRate(
             () -> {
               try {
-                store.ttl(lockKey, now().plus(until));
+                store.ttl(key, now().plus(until));
               } catch (final Exception exception) {
                 log.log(SEVERE, "Error watching lock.", exception);
               }
