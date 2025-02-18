@@ -5,8 +5,8 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":aegis-codec-common"))
-    implementation(libs.fury.core)
+    api(project(":aegis-codec-common"))
+    api(libs.fury.core)
 }
 
 aegisPublish {

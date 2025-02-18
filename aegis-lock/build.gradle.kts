@@ -5,8 +5,8 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":aegis-store"))
-    implementation(libs.spotify.futures)
+    api(project(":aegis-store"))
+    api(libs.spotify.futures)
     compileOnly(libs.lettuce.core)
 }
 

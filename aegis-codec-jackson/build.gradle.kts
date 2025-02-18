@@ -5,8 +5,8 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":aegis-codec-common"))
-    implementation(libs.jackson.databind)
+    api(project(":aegis-codec-common"))
+    api(libs.jackson.databind)
 }
 
 aegisPublish {

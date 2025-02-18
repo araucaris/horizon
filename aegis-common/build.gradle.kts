@@ -5,15 +5,15 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":aegis-codec-common"))
-    implementation(project(":aegis-store"))
-    implementation(project(":aegis-lock"))
-    implementation(project(":aegis-broker"))
-    implementation(project(":aegis-eventbus"))
+    api(project(":aegis-codec-common"))
+    api(project(":aegis-store"))
+    api(project(":aegis-lock"))
+    api(project(":aegis-broker"))
+    api(project(":aegis-eventbus"))
 
-    implementation(libs.lettuce.core)
-    implementation(libs.vavr)
-    implementation(libs.spotify.futures)
+    api(libs.lettuce.core)
+    api(libs.vavr)
+    api(libs.spotify.futures)
 }
 
 aegisPublish {

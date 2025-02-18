@@ -5,8 +5,8 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":aegis-codec-common"))
-    implementation(project(":aegis-eventbus"))
+    api(project(":aegis-codec-common"))
+    api(project(":aegis-eventbus"))
     compileOnly(libs.lettuce.core)
 }
 
