@@ -25,9 +25,9 @@ import java.util.concurrent.CompletableFuture;
  * method. - Allows observing events and subscribing observers via the {@code observe} method. -
  * Publishes packets to specified channels using the {@code publish} method. - Provides access to a
  * key-value store using the {@code kv} method. - Enables hash-based data storage through the {@code
- * map} method. - Supports distributed locking mechanisms using the {@code getLock} method. -
- * Retrieves the system's unique identity with the {@code identity} method. - Offers access to the
- * underlying Redis client through the {@code redisClient} method.
+ * map} method. - Supports distributed locking mechanisms using the {@code lock} method. - Retrieves
+ * the system's unique identity with the {@code identity} method. - Offers access to the underlying
+ * Redis client through the {@code redisClient} method.
  *
  * <p>This implementation relies on {@link RedisClient} for managing Redis connections and a {@link
  * PacketBroker} for handling packet-based communication. It ensures resource cleanup by closing
@@ -50,7 +50,7 @@ import java.util.concurrent.CompletableFuture;
  * <p>- {@code HashMapStore map(String name)}: Returns a hash map store associated with a given
  * name.
  *
- * <p>- {@code DistributedLock getLock(String key, int tries)}: Creates a distributed lock for
+ * <p>- {@code DistributedLock lock(String key, int tries)}: Creates a distributed lock for
  * synchronization with retry handling.
  *
  * <p>- {@code String identity()}: Retrieves the unique identity of this Aegis client.
@@ -69,6 +69,8 @@ final class AegisClient implements Closeable, Aegis {
   private final RedisClient redisClient;
   private final PacketBroker packetBroker;
 
+  private final KeyValueStore keyValueStore;
+
   private final StatefulRedisConnection<String, String> connection;
   private final StatefulRedisPubSubConnection<String, String> pubSubConnection;
 
@@ -79,6 +81,7 @@ final class AegisClient implements Closeable, Aegis {
     this.connection = redisClient.connect();
     this.pubSubConnection = redisClient.connectPubSub();
     this.packetBroker = packetBroker;
+    this.keyValueStore = KeyValueStore.create(connection);
   }
 
   @Override
@@ -99,7 +102,7 @@ final class AegisClient implements Closeable, Aegis {
 
   @Override
   public KeyValueStore kv() {
-    return KeyValueStore.create(connection);
+    return keyValueStore;
   }
 
   @Override
@@ -108,7 +111,7 @@ final class AegisClient implements Closeable, Aegis {
   }
 
   @Override
-  public DistributedLock getLock(final String key, final int tries) {
+  public DistributedLock lock(final String key, final int tries) {
     return DistributedLock.create(key, identity, tries, kv());
   }
 

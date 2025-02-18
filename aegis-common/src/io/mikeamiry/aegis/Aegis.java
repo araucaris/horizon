@@ -32,7 +32,7 @@ import java.util.concurrent.CompletableFuture;
  * represented by a specific key name.
  *
  * <p>- **Distributed Locking**: Supports distributed locking mechanisms with retry capabilities
- * using {@code getLock}.
+ * using {@code lock }.
  *
  * <p>- **Identity Resolution**: Retrieves the unique identity of the underlying Aegis instance.
  *
@@ -54,8 +54,8 @@ import java.util.concurrent.CompletableFuture;
  * <p>- {@code HashMapStore map(String name)}: Provides access to a hash map storage interface
  * identified by a name.
  *
- * <p>- {@code DistributedLock getLock(String key, int tries)}: Returns a distributed lock object
- * for synchronizing processes, with retry attempts specified.
+ * <p>- {@code DistributedLock lock (String key, int tries)}: Returns a distributed lock object for
+ * synchronizing processes, with retry attempts specified.
  *
  * <p>- {@code String identity()}: Retrieves the system's identifier.
  *
@@ -76,7 +76,7 @@ public sealed interface Aegis extends Closeable permits AegisClient {
 
   HashMapStore map(final String name);
 
-  DistributedLock getLock(String key, int tries);
+  DistributedLock lock(String key, int tries);
 
   String identity();
 
