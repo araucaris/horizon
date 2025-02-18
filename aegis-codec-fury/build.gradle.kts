@@ -6,8 +6,7 @@ plugins {
 
 dependencies {
     compileOnly(project(":aegis-codec-common"))
-    compileOnly(libs.jetbrains.annotations)
-    api(libs.fury.core)
+    implementation(libs.fury.core)
 }
 
 aegisPublish {
