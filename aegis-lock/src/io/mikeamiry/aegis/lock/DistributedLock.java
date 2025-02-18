@@ -4,6 +4,7 @@ import static io.mikeamiry.aegis.lock.DistributedLockUtils.SCHEDULER;
 import static java.time.Duration.ofMillis;
 import static java.time.Duration.ofSeconds;
 import static java.time.Instant.now;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.SEVERE;
 
@@ -15,37 +16,38 @@ import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 /**
- * Represents a distributed lock mechanism that allows safe execution of tasks or operations in a
- * distributed environment. This class ensures only one instance of a process can acquire the lock
- * for a specific key at a time.
+ * Provides a mechanism for distributed locking.
  *
- * <p>The lock utilizes a key-value store to manage ownership and duration of the lock. It supports
- * operations on tasks with the help of asynchronous execution using {@link
- * DistributedLockExecutor}.
+ * <p>This class is designed for distributed systems to ensure synchronized access to shared
+ * resources by leveraging a key-value store for lock management. The functionality includes
+ * acquiring locks, releasing locks, and executing tasks with the protection of a distributed lock.
  *
- * <p>The lock is identified by a unique key (`key`) and an identity string (`identity`)
- * representing the owner. The lock manages its expiration (`until`) and allows retry attempts with
- * configurable delay and maximum tries. The class provides automatic TTL (time-to-live) updates
- * while the lock is being held.
+ * <p>DistributedLock uses a combination of identifiers (key and identity) and expiration time (TTL)
+ * to manage locks in the system. Attempted operations ensure atomicity and safety by leveraging the
+ * underlying {@link KeyValueStore}.
  *
- * <p>Features: - Lock acquisition and enforcement using a key-value store. - Automatic and periodic
- * TTL updates for the lock. - Asynchronous and retry-enabled task execution support.
+ * <p>Features include: - Asynchronous execution with distributed lock acquisition. - Task retries
+ * with exponential backoff in case of failures. - Automatic renewal of lock TTL while the lock is
+ * held.
  *
- * <p>Private Constructor: The lock instance is created using the static `create` methods.
+ * <p>Constructor: The constructor is private, and instances of the DistributedLock are created
+ * using provided static `create` factory methods.
  *
- * <p>Thread-Safety: This class is designed to be thread-safe when used in a distributed context
- * with proper configuration of the backing key-value store.
+ * <p>Key public methods: - `create`: Factory methods to construct a new instance with specified
+ * parameters or defaults. - `supply`: Executes a task with a return value under the lock
+ * protection. - `execute`: Executes a task without a return value under the lock protection. -
+ * `tryExecuteOnce`: Attempts to execute a task once under lock protection, returning whether the
+ * lock was successfully acquired.
  *
- * <p>Methods: - static `create(String, String, Duration, Duration, int, KeyValueStore)`: Creates a
- * DistributedLock with specific configurations. - static `create(String, String, int,
- * KeyValueStore)`: Creates a DistributedLock with default delay and expiration durations. -
- * `CompletableFuture supply(Supplier)`: Executes a task that produces a result, ensuring locking
- * semantics. - `CompletableFuture execute(Runnable)`: Executes a task without a result, ensuring
- * locking semantics.
+ * <p>Private internal behaviors include: - A periodic task (`startWatching`) to renew the TTL of
+ * the lock while it is held to prevent premature expiration. - Cleanup of resources and state when
+ * the lock is released (`stopWatching`).
  *
- * <p>Exceptions: - Throws {@link DistributedLockException} if the lock is already held by another
- * identity during execution attempts. - Relies on the underlying key-value store for
- * storage-related exceptions.
+ * <p>Exceptions: - Throws {@link DistributedLockException} when a lock cannot be acquired,
+ * typically indicating that another process currently holds the lock.
+ *
+ * <p>Thread Safety: - This class is designed to be thread-safe when interacting with a distributed
+ * context.
  */
 public final class DistributedLock {
 
@@ -116,6 +118,25 @@ public final class DistributedLock {
           try {
             startWatching();
             task.run();
+          } finally {
+            stopWatching();
+            store.del(key);
+          }
+        });
+  }
+
+  public CompletableFuture<Boolean> tryExecuteOnce(final Runnable task) {
+    return supplyAsync(
+        () -> {
+          final boolean acquired = store.set(key, identity, until, true);
+          if (!acquired) {
+            return false;
+          }
+
+          try {
+            startWatching();
+            task.run();
+            return true;
           } finally {
             stopWatching();
             store.del(key);
