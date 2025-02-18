@@ -1,21 +1,17 @@
 package io.mikeamiry.aegis;
 
-import static java.util.Collections.unmodifiableMap;
-
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
-import io.mikeamiry.aegis.cache.KeyValueCache;
-import io.mikeamiry.aegis.cache.LocalCacheObserver;
 import io.mikeamiry.aegis.eventbus.Observer;
 import io.mikeamiry.aegis.lock.DistributedLock;
 import io.mikeamiry.aegis.packet.Packet;
 import io.mikeamiry.aegis.packet.PacketBroker;
 import io.mikeamiry.aegis.packet.PacketBrokerException;
+import io.mikeamiry.aegis.store.HashMapStore;
+import io.mikeamiry.aegis.store.KeyValueStore;
 import java.io.Closeable;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The AegisClient class provides an implementation of the Aegis interface, enabling distributed
@@ -59,9 +55,6 @@ final class AegisClient implements Closeable, Aegis {
   private final RedisClient redisClient;
   private final PacketBroker packetBroker;
 
-  private final Map<String, KeyValueCache> caches;
-  private final Map<String, DistributedLock> locks;
-
   private final StatefulRedisConnection<String, String> connection;
   private final StatefulRedisPubSubConnection<String, String> pubSubConnection;
 
@@ -72,13 +65,6 @@ final class AegisClient implements Closeable, Aegis {
     this.connection = redisClient.connect();
     this.pubSubConnection = redisClient.connectPubSub();
     this.packetBroker = packetBroker;
-    this.caches = new ConcurrentHashMap<>();
-    this.locks = new ConcurrentHashMap<>();
-    observeLocallyCached();
-  }
-
-  private void observeLocallyCached() {
-    observe(LocalCacheObserver.of(this));
   }
 
   @Override
@@ -98,24 +84,18 @@ final class AegisClient implements Closeable, Aegis {
   }
 
   @Override
-  public KeyValueCache getRemoteCache(final String key) {
-    return caches.computeIfAbsent(key, k -> KeyValueCache.createRemote(k, this));
+  public KeyValueStore kv() {
+    return KeyValueStore.create(connection);
   }
 
   @Override
-  public KeyValueCache getLocalCache(final String key) {
-    return caches.computeIfAbsent(key, k -> KeyValueCache.createLocallyCached(k, this));
-  }
-
-  @Override
-  public KeyValueCache getLocalCache(final String key, final int cacheSize) {
-    return caches.computeIfAbsent(key, k -> KeyValueCache.createLocallyCached(k, cacheSize, this));
+  public HashMapStore map(final String name) {
+    return HashMapStore.create(name, connection);
   }
 
   @Override
   public DistributedLock getLock(final String key, final int tries) {
-    return locks.computeIfAbsent(
-        key, k -> DistributedLock.create(identity, key, tries, getRemoteCache("locks")));
+    return DistributedLock.create(key, identity, tries, kv());
   }
 
   @Override
@@ -129,34 +109,13 @@ final class AegisClient implements Closeable, Aegis {
   }
 
   @Override
-  public Map<String, KeyValueCache> caches() {
-    return unmodifiableMap(caches);
-  }
-
-  @Override
-  public Map<String, DistributedLock> locks() {
-    return unmodifiableMap(locks);
-  }
-
-  @Override
-  public StatefulRedisConnection<String, String> connection() {
-    return connection;
-  }
-
-  @Override
-  public StatefulRedisPubSubConnection<String, String> pubSubConnection() {
-    return pubSubConnection;
-  }
-
-  @Override
   public void close() {
     try {
       connection.close();
       pubSubConnection.close();
       redisClient.shutdown();
     } catch (final Exception exception) {
-      throw new AegisException(
-          "Could not close packet broker due to unexpected exception.", exception);
+      throw new AegisException("Could not close Aegis due to unexpected exception.", exception);
     }
   }
 }

@@ -49,11 +49,15 @@ record DistributedLockExecutor(Duration delay, Duration until, int tries) {
 
     return exceptionallyCompose(
             supplyLaterAsync(supplier, calculateBackoffDelay(retryCount + 1)),
-            cause ->
-                supply(
+            cause -> {
+              if (cause instanceof DistributedLockException) {
+                return supply(
                     supplier,
                     retryCount + 1,
-                    backoffDelay.plus(calculateBackoffDelay(retryCount + 1))))
+                    backoffDelay.plus(calculateBackoffDelay(retryCount + 1)));
+              }
+              throw new RuntimeException(cause);
+            })
         .toCompletableFuture();
   }
 
@@ -69,11 +73,15 @@ record DistributedLockExecutor(Duration delay, Duration until, int tries) {
 
     return exceptionallyCompose(
             runLaterAsync(action, calculateBackoffDelay(retryCount + 1)),
-            cause ->
-                execute(
+            cause -> {
+              if (cause instanceof DistributedLockException) {
+                return execute(
                     action,
                     retryCount + 1,
-                    backoffDelay.plus(calculateBackoffDelay(retryCount + 1))))
+                    backoffDelay.plus(calculateBackoffDelay(retryCount + 1)));
+              }
+              throw new RuntimeException(cause);
+            })
         .toCompletableFuture();
   }
 

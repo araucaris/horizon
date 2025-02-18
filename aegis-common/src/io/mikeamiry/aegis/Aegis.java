@@ -1,15 +1,14 @@
 package io.mikeamiry.aegis;
 
 import io.lettuce.core.RedisClient;
-import io.lettuce.core.api.StatefulRedisConnection;
-import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
-import io.mikeamiry.aegis.cache.KeyValueCache;
+import io.mikeamiry.aegis.cache.AegisStore;
 import io.mikeamiry.aegis.eventbus.Observer;
 import io.mikeamiry.aegis.lock.DistributedLock;
 import io.mikeamiry.aegis.packet.Packet;
 import io.mikeamiry.aegis.packet.PacketBrokerException;
+import io.mikeamiry.aegis.store.HashMapStore;
+import io.mikeamiry.aegis.store.KeyValueStore;
 import java.io.Closeable;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -27,7 +26,7 @@ import java.util.concurrent.CompletableFuture;
  * Packet} objects. - **Observation**: Facilitates subscribing to topics for real-time updates using
  * a {@link Observer}. - **Publishing Messages**: Allows the publication of messages to specific
  * channels using {@link Packet} objects. - **Key-Value Caching**: Provides remote and locally
- * cached storage mechanisms through the {@link KeyValueCache} interface. - **Distributed Locks**:
+ * cached storage mechanisms through the {@link AegisStore} interface. - **Distributed Locks**:
  * Offers distributed locking mechanisms using keys to ensure concurrency control via {@link
  * DistributedLock}. - **Identity Access**: Exposes the identity of the Aegis instance for
  * cluster-wide identification purposes. - **Redis Integrations**: Provides access to underlying
@@ -56,23 +55,13 @@ public sealed interface Aegis extends Closeable permits AegisClient {
 
   void publish(String channel, Packet packet) throws PacketBrokerException;
 
-  KeyValueCache getRemoteCache(String key);
+  KeyValueStore kv();
 
-  KeyValueCache getLocalCache(String key);
-
-  KeyValueCache getLocalCache(String key, int cacheSize);
+  HashMapStore map(final String name);
 
   DistributedLock getLock(String key, int tries);
 
   String identity();
 
   RedisClient redisClient();
-
-  Map<String, KeyValueCache> caches();
-
-  Map<String, DistributedLock> locks();
-
-  StatefulRedisConnection<String, String> connection();
-
-  StatefulRedisPubSubConnection<String, String> pubSubConnection();
 }

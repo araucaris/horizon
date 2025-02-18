@@ -9,8 +9,8 @@ import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.makeamiry.aegis.codec.Codec;
 import io.mikeamiry.aegis.eventbus.EventBus;
 import io.mikeamiry.aegis.eventbus.Observer;
-import io.vavr.control.Option;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -86,9 +86,9 @@ final class PacketBrokerImpl implements PacketBroker {
           }
 
           //noinspection unchecked
-          Option.of(callbacks.get(response.target()))
+          Optional.ofNullable(callbacks.get(response.target()))
               .map(future -> ((CompletableFuture<Packet>) future))
-              .peek(future -> future.complete(response));
+              .ifPresent(future -> future.complete(response));
         });
   }
 
