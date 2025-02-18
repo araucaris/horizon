@@ -8,7 +8,7 @@ key-value storage, distributed locking.
 ##### Add repository
 
 ```kotlin
-maven("https://repo.rubymc.pl/releases")
+maven("https://repo.rubymc.pl/snapshots")
 ```
 
 ##### Add dependencies
