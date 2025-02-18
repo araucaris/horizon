@@ -3,7 +3,6 @@ package io.mikeamiry.aegis;
 import io.lettuce.core.RedisClient;
 import io.mikeamiry.aegis.broker.Packet;
 import io.mikeamiry.aegis.broker.PacketBrokerException;
-import io.mikeamiry.aegis.cache.AegisStore;
 import io.mikeamiry.aegis.eventbus.Observer;
 import io.mikeamiry.aegis.lock.DistributedLock;
 import io.mikeamiry.aegis.store.HashMapStore;
@@ -12,40 +11,58 @@ import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Aegis is a sealed interface that acts as the core abstraction for distributed systems operations,
- * including caching, locking, messaging, and observation functionalities. It provides methods to
- * facilitate communication and resource management in a distributed environment.
+ * Aegis is a sealed interface representing a comprehensive system for managing packet
+ * communication, key-value storage, distributed locks, and observer subscriptions. It extends
+ * {@link Closeable}, allowing implementations to release resources when the system is no longer in
+ * use.
  *
- * <p>This interface is restricted to being implemented by the AegisClient class, ensuring
- * controlled extensibility. It extends the {@link Closeable} interface, requiring implementations
- * to manage resources and support proper cleanup of connections and other resources.
+ * <p>Key functionalities provided by Aegis:
  *
- * <p>Key capabilities of Aegis include:
+ * <p>- **Request-Response Packet Communication**: Facilitates sending requests and receiving
+ * responses over specified channels using {@code request}.
  *
- * <p>- **Request/Response Mechanism**: Enables asynchronous communication using serialized {@link
- * Packet} objects. - **Observation**: Facilitates subscribing to topics for real-time updates using
- * a {@link Observer}. - **Publishing Messages**: Allows the publication of messages to specific
- * channels using {@link Packet} objects. - **Key-Value Caching**: Provides remote and locally
- * cached storage mechanisms through the {@link AegisStore} interface. - **Distributed Locks**:
- * Offers distributed locking mechanisms using keys to ensure concurrency control via {@link
- * DistributedLock}. - **Identity Access**: Exposes the identity of the Aegis instance for
- * cluster-wide identification purposes. - **Redis Integrations**: Provides access to underlying
- * Redis resources using {@link RedisClient} and related connections.
+ * <p>- **Observer Subscriptions**: Allows observers to subscribe and monitor events or packets.
  *
- * <p>Methods included in this interface cover a range of functionalities:
+ * <p>- **Packet Publishing**: Enables publishing packets to specified channels.
  *
- * <p>- `request(String, Packet)`: Sends a request to a channel and asynchronously waits for a
- * response. - `observe(Observer)`: Registers a {@link Observer} to observe packets or events on
- * relevant topics. - `publish(String, Packet)`: Publishes a {@link Packet} to a channel for
- * consumption by observers. - `getRemoteCache(String)`, `getLocalCache(String)`,
- * `getLocalCache(String, int)`: Retrieve or create caches for efficient data storage. -
- * `getLock(String, int)`: Acquires a distributed lock for key-based synchronization. -
- * `identity()`: Retrieves the unique identifier of the Aegis instance. - `redisClient()`: Provides
- * access to the underlying {@link RedisClient} object. - `caches()`: Returns a map of all currently
- * managed caches. - `locks()`: Returns a map of all currently managed distributed locks. -
- * `connection()`: Gives access to the main Redis connection. - `pubSubConnection()`: Provides
- * access to the Redis publish-subscribe connection. - `close()`: Closes the distributed system
- * resources and cleans up any active Redis connections.
+ * <p>- **Key-Value Store Management**: Provides access to a {@link KeyValueStore} for managing
+ * key-value pairs.
+ *
+ * <p>- **HashMap Store Feature**: Handles hash-based storage using a {@link HashMapStore},
+ * represented by a specific key name.
+ *
+ * <p>- **Distributed Locking**: Supports distributed locking mechanisms with retry capabilities
+ * using {@code getLock}.
+ *
+ * <p>- **Identity Resolution**: Retrieves the unique identity of the underlying Aegis instance.
+ *
+ * <p>- **Redis Client Access**: Provides access to the underlying {@link RedisClient} for extended
+ * operations.
+ *
+ * <p>Methods: - {@code <T extends Packet> CompletableFuture<T> request(String channel, Packet
+ * request)}: Sends a request packet to a specified channel and returns a future that resolves with
+ * the response.
+ *
+ * <p>- {@code void observe(Observer observer) throws PacketBrokerException}: Subscribes an observer
+ * to listen to events or packets, throwing {@link PacketBrokerException} on failure.
+ *
+ * <p>- {@code void publish(String channel, Packet packet) throws PacketBrokerException}: Publishes
+ * a packet to a channel, with potential {@link PacketBrokerException} for publishing errors.
+ *
+ * <p>- {@code KeyValueStore kv()}: Provides access to a key-value store implementation.
+ *
+ * <p>- {@code HashMapStore map(String name)}: Provides access to a hash map storage interface
+ * identified by a name.
+ *
+ * <p>- {@code DistributedLock getLock(String key, int tries)}: Returns a distributed lock object
+ * for synchronizing processes, with retry attempts specified.
+ *
+ * <p>- {@code String identity()}: Retrieves the system's identifier.
+ *
+ * <p>- {@code RedisClient redisClient()}: Returns the underlying {@link RedisClient} for additional
+ * Redis operations.
+ *
+ * <p>Subclasses must implement the permitted sealed interface {@link AegisClient}.
  */
 public sealed interface Aegis extends Closeable permits AegisClient {
 

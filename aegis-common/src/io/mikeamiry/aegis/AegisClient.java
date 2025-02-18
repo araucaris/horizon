@@ -14,39 +14,53 @@ import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * The AegisClient class provides an implementation of the Aegis interface, enabling distributed
- * caching, locking, and message-broker-based communication. This class is designed to manage
- * Redis-based operations in conjunction with a packet broker for inter-component communication.
+ * AegisClient is a final implementation of the {@link Aegis} interface, providing a comprehensive
+ * system for managing packet communication, key-value storage, distributed locks, observer
+ * subscriptions, and Redis client interactions. This class encapsulates all core operations and
+ * ensures proper resource management through the {@code Closeable} interface.
  *
- * <p>This class is final and cannot be subclassed. It encapsulates the functionality of multiple
- * components, including Redis connections, local and remote caches, distributed locks, and an
- * observer mechanism. It integrates with a PacketBroker to facilitate a publish-subscribe model and
- * request-response communication.
+ * <p>Key features:
  *
- * <p>Responsibilities: - Offers APIs to request responses through a channel using the PacketBroker.
- * - Allows for the publishing of packets to specific channels. - Facilitates observation of packets
- * through subscribers. - Maintains local and remote caching mechanisms for data management. -
- * Supports distributed locking mechanisms using Redis-backed locks. - Provides access to Redis
- * connections and the underlying packet broker for advanced usage.
+ * <p>- Facilitates asynchronous request-response packet communication using the {@code request}
+ * method. - Allows observing events and subscribing observers via the {@code observe} method. -
+ * Publishes packets to specified channels using the {@code publish} method. - Provides access to a
+ * key-value store using the {@code kv} method. - Enables hash-based data storage through the {@code
+ * map} method. - Supports distributed locking mechanisms using the {@code getLock} method. -
+ * Retrieves the system's unique identity with the {@code identity} method. - Offers access to the
+ * underlying Redis client through the {@code redisClient} method.
  *
- * <p>Key Features: - Maintains a unique identity for the client instance, typically based on the
- * current process ID. - Supports both local and remote key-value caching with optional size
- * configuration for local caches. - Ensures thread-safety by using concurrent collections for
- * managing caches and locks. - Cleanly shuts down Redis connections and resources upon closure.
+ * <p>This implementation relies on {@link RedisClient} for managing Redis connections and a {@link
+ * PacketBroker} for handling packet-based communication. It ensures resource cleanup by closing
+ * Redis connections and shutting down the Redis client during the {@code close} method invocation.
  *
- * <p>Methods: - `request` facilitates sending a packet on a channel and returns a CompletableFuture
- * for handling responses. - `observe` allows registering a subscriber to observe incoming messages
- * on specific channels. - `publish` publishes a packet to a specific channel. - `getRemoteCache`,
- * `getLocalCache` provide methods to retrieve or create caches. - `getLock` provides a mechanism to
- * create or retrieve distributed locks with retry configuration. - Accessor methods return the
- * identity, Redis client, caches, locks, and Redis connections.
+ * <p>Key methods:
  *
- * <p>Thread Safety: - Caches and locks are maintained using ConcurrentHashMap to ensure thread-safe
- * access and modification.
+ * <p>- {@code <T extends Packet> CompletableFuture<T> request(String channel, Packet request)}:
+ * Sends a request packet and asynchronously retrieves the response.
  *
- * <p>Closing the Client: - Implements the `Closeable` interface for properly shutting down
- * resources such as Redis connections. - On closure, it ensures Redis client and connections are
- * terminated, throwing an exception if resource closure fails.
+ * <p>- {@code void observe(Observer observer) throws PacketBrokerException}: Registers an observer
+ * for event or packet subscriptions.
+ *
+ * <p>- {@code void publish(String channel, Packet packet) throws PacketBrokerException}: Publishes
+ * a packet to a channel.
+ *
+ * <p>- {@code KeyValueStore kv()}: Provides access to a key-value store for managing key-value
+ * pairs.
+ *
+ * <p>- {@code HashMapStore map(String name)}: Returns a hash map store associated with a given
+ * name.
+ *
+ * <p>- {@code DistributedLock getLock(String key, int tries)}: Creates a distributed lock for
+ * synchronization with retry handling.
+ *
+ * <p>- {@code String identity()}: Retrieves the unique identity of this Aegis client.
+ *
+ * <p>- {@code RedisClient redisClient()}: Returns the underlying Redis client instance.
+ *
+ * <p>Resource management is a critical aspect of this class. The {@code close()} method ensures
+ * that all Redis connections are terminated and the {@link PacketBroker} operations are safely
+ * concluded. Any exceptions during resource cleanup will result in an {@link AegisException} being
+ * thrown.
  */
 final class AegisClient implements Closeable, Aegis {
 

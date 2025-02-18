@@ -2,6 +2,14 @@ package io.mikeamiry.aegis.store;
 
 import io.lettuce.core.api.StatefulRedisConnection;
 
+/**
+ * Implementation of the {@link HashMapStore} interface for managing hash maps stored in Redis. This
+ * class provides methods to interact with hash maps in a Redis database based on a specified key.
+ *
+ * <p>This implementation uses a {@link StatefulRedisConnection} to execute hash map operations such
+ * as: - Setting a field and value in the hash map. - Retrieving the value associated with a
+ * specific field. - Deleting a field from the hash map.
+ */
 final class HashMapStoreImpl implements HashMapStore {
 
   private final String key;
