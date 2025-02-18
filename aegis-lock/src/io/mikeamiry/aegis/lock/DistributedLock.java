@@ -40,8 +40,8 @@ import java.util.logging.Logger;
  * DistributedLock with specific configurations. - static `create(String, String, int,
  * KeyValueStore)`: Creates a DistributedLock with default delay and expiration durations. -
  * `CompletableFuture supply(Supplier)`: Executes a task that produces a result, ensuring locking
- * semantics. - `CompletableFuture<Void> execute(Runnable)`: Executes a task without a result,
- * ensuring locking semantics.
+ * semantics. - `CompletableFuture execute(Runnable)`: Executes a task without a result, ensuring
+ * locking semantics.
  *
  * <p>Exceptions: - Throws {@link DistributedLockException} if the lock is already held by another
  * identity during execution attempts. - Relies on the underlying key-value store for
