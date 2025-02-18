@@ -1,6 +1,7 @@
 package io.mikeamiry.aegis.store;
 
 import io.lettuce.core.api.StatefulRedisConnection;
+import java.util.Collection;
 
 /**
  * Implementation of the {@link HashMapStore} interface for managing hash maps stored in Redis. This
@@ -47,5 +48,10 @@ final class HashMapStoreImpl implements HashMapStore {
 
     connection.sync().hdel(key, field);
     return true;
+  }
+
+  @Override
+  public Collection<String> values() {
+    return connection.sync().hvals(key);
   }
 }

@@ -1,6 +1,7 @@
 package io.mikeamiry.aegis.store;
 
 import io.lettuce.core.api.StatefulRedisConnection;
+import java.util.Collection;
 
 /**
  * HashMapStore provides an interface for managing hash maps as stored in a Redis database. This
@@ -30,4 +31,6 @@ public sealed interface HashMapStore permits HashMapStoreImpl {
   String get(String field);
 
   boolean del(String field);
+
+  Collection<String> values();
 }
