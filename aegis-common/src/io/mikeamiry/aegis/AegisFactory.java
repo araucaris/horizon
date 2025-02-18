@@ -8,6 +8,7 @@ import io.mikeamiry.aegis.broker.PacketBroker;
 import io.mikeamiry.aegis.broker.PacketBrokerFactory;
 import io.mikeamiry.aegis.eventbus.EventBus;
 import io.mikeamiry.aegis.eventbus.EventBusFactory;
+import java.util.concurrent.Executor;
 
 /**
  * A factory class for creating instances of the {@link Aegis} interface.
@@ -29,9 +30,10 @@ public final class AegisFactory {
 
   private AegisFactory() {}
 
-  public static Aegis create(final Codec codec, final RedisClient redisClient) {
+  public static Aegis create(
+      final Executor executor, final Codec codec, final RedisClient redisClient) {
     final String identity = String.valueOf(current().pid());
-    final EventBus eventBus = EventBusFactory.create();
+    final EventBus eventBus = EventBusFactory.create(executor);
     return create(identity, codec, eventBus, redisClient);
   }
 

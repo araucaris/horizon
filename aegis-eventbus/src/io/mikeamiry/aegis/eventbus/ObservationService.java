@@ -17,6 +17,29 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * The ObservationService class manages the registration and mapping of observer methods to their
+ * corresponding event types. It plays a core role in the event-driven architecture by overseeing
+ * how observer methods are mapped and invoked when events occur.
+ *
+ * <p>This service: - Registers observer instances and maps their eligible methods annotated with
+ * {@code @Observe} to event types these methods observe. - Stores these observer definitions
+ * grouped by event types. - Provides access to observer definitions by event type for
+ * event-publishing mechanisms.
+ *
+ * <p>Observers are required to comply with the following constraints for their methods to be
+ * eligible: - Methods must have the {@code @Observe} annotation. - Methods must declare exactly one
+ * parameter, which must be assignable from the {@code Event} type.
+ *
+ * <p>Objects of this class are immutable once created and are not designed for inheritance or
+ * modification.
+ *
+ * <p>This class relies on: - Java's {@link MethodHandle} for efficient method invocation. - {@code
+ * java.util.Map} and {@code java.util.Set} to store and organize registered observers.
+ *
+ * <p>Exceptions: - Throws {@code ObservingException} when method resolution or registration fails
+ * due to accessibility issues or invalid observer definitions.
+ */
 final class ObservationService {
 
   private static final MethodHandles.Lookup LOOKUP = lookup();
