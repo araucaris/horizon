@@ -28,7 +28,7 @@ import java.lang.annotation.Target;
  * registered with the event bus.
  *
  * <p>Thread Safety: - The execution of annotated methods depends on the threading model of the
- * {@link Executor} supplied to the {@link EventBusFactory}.
+ * {@link java.util.concurrent.Executor} supplied to the {@link EventBusFactory}.
  */
 @Retention(RUNTIME)
 @Target(METHOD)
