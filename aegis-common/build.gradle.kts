@@ -5,13 +5,13 @@ plugins {
 }
 
 dependencies {
-    compileOnly(libs.jetbrains.annotations)
-    api(project(":aegis-codec-common"))
-    api(project(":aegis-eventbus"))
-    api(libs.lettuce.core)
-    api(libs.caffeine)
-    api(libs.vavr)
-    api(libs.spotify.futures)
+    implementation(project(":aegis-codec-common"))
+    implementation(project(":aegis-store"))
+    implementation(project(":aegis-eventbus"))
+
+    implementation(libs.lettuce.core)
+    implementation(libs.vavr)
+    implementation(libs.spotify.futures)
 }
 
 aegisPublish {
