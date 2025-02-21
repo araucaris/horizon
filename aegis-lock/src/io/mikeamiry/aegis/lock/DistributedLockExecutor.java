@@ -3,6 +3,7 @@ package io.mikeamiry.aegis.lock;
 import static com.spotify.futures.CompletableFutures.exceptionallyCompose;
 import static io.mikeamiry.aegis.lock.DistributedLockUtils.runLaterAsync;
 import static io.mikeamiry.aegis.lock.DistributedLockUtils.supplyLaterAsync;
+import static java.util.concurrent.CompletableFuture.failedFuture;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -44,7 +45,7 @@ record DistributedLockExecutor(Duration delay, Duration until, int tries) {
   private <T> CompletableFuture<T> supply(
       final Supplier<T> supplier, final int retryCount, final Duration backoffDelay) {
     if (retryCount >= tries) {
-      throw new RetryingException(retryCount);
+      return failedFuture(new RetryingException(retryCount));
     }
 
     return exceptionallyCompose(
@@ -56,7 +57,7 @@ record DistributedLockExecutor(Duration delay, Duration until, int tries) {
                     retryCount + 1,
                     backoffDelay.plus(calculateBackoffDelay(retryCount + 1)));
               }
-              throw new RuntimeException(cause);
+              return failedFuture(cause);
             })
         .toCompletableFuture();
   }
@@ -68,7 +69,7 @@ record DistributedLockExecutor(Duration delay, Duration until, int tries) {
   private CompletableFuture<Void> execute(
       final Runnable action, final int retryCount, final Duration backoffDelay) {
     if (retryCount >= tries) {
-      throw new RetryingException(retryCount);
+      return failedFuture(new RetryingException(retryCount));
     }
 
     return exceptionallyCompose(
@@ -80,7 +81,7 @@ record DistributedLockExecutor(Duration delay, Duration until, int tries) {
                     retryCount + 1,
                     backoffDelay.plus(calculateBackoffDelay(retryCount + 1)));
               }
-              throw new RuntimeException(cause);
+              return failedFuture(cause);
             })
         .toCompletableFuture();
   }
