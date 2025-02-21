@@ -25,7 +25,10 @@ public final class PacketBrokerFactory {
   private PacketBrokerFactory() {}
 
   public static PacketBroker create(
-      final Codec codec, final EventBus eventBus, final RedisClient redisClient) {
-    return new PacketBrokerImpl(codec, eventBus, redisClient);
+      final String identity,
+      final Codec codec,
+      final EventBus eventBus,
+      final RedisClient redisClient) {
+    return new PacketBrokerImpl(identity, codec, eventBus, redisClient);
   }
 }

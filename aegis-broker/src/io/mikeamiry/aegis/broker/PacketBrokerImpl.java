@@ -10,6 +10,7 @@ import io.makeamiry.aegis.codec.Codec;
 import io.mikeamiry.aegis.eventbus.EventBus;
 import io.mikeamiry.aegis.eventbus.Observer;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -48,13 +49,19 @@ import java.util.function.Consumer;
 final class PacketBrokerImpl implements PacketBroker {
 
   private final Codec codec;
+  private final String identity;
   private final EventBus eventBus;
   private final StatefulRedisConnection<String, byte[]> connection;
   private final StatefulRedisPubSubConnection<String, byte[]> pubSubConnection;
   private final Map<String, CompletableFuture<?>> callbacks;
   private final Set<String> observedTopics;
 
-  PacketBrokerImpl(final Codec codec, final EventBus eventBus, final RedisClient redisClient) {
+  PacketBrokerImpl(
+      final String identity,
+      final Codec codec,
+      final EventBus eventBus,
+      final RedisClient redisClient) {
+    this.identity = identity;
     this.eventBus = eventBus;
     this.codec = codec;
     this.eventBus.register(Packet.class, this::delegateToPacketBroker);
@@ -86,8 +93,8 @@ final class PacketBrokerImpl implements PacketBroker {
           }
 
           //noinspection unchecked
-          Optional.ofNullable(callbacks.get(response.target()))
-              .map(future -> ((CompletableFuture<Packet>) future))
+          Optional.of(callbacks.get(response.target()))
+              .map(future -> (CompletableFuture<Packet>) future)
               .ifPresent(future -> future.complete(response));
         });
   }
@@ -99,6 +106,9 @@ final class PacketBrokerImpl implements PacketBroker {
 
   public void publish(final String channel, final Packet packet) throws PacketBrokerException {
     try {
+      if (packet.source() == null) {
+        packet.source(identity);
+      }
       connection.sync().publish(channel, codec.encodeToBytes(packet));
     } catch (final Exception exception) {
       throw new PacketBrokerException(
@@ -122,6 +132,9 @@ final class PacketBrokerImpl implements PacketBroker {
   private void delegateToEventBus(final String topic, final byte[] message)
       throws PacketBrokerException {
     final Packet packet = codec.decodeFromBytes(message);
+    if (Objects.equals(packet.source(), identity)) {
+      return;
+    }
     try {
       eventBus.publish(packet, topic);
     } catch (final Exception exception) {

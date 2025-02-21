@@ -42,7 +42,8 @@ public final class AegisFactory {
       final Codec codec,
       final EventBus eventBus,
       final RedisClient redisClient) {
-    final PacketBroker packetBroker = PacketBrokerFactory.create(codec, eventBus, redisClient);
+    final PacketBroker packetBroker =
+        PacketBrokerFactory.create(identity, codec, eventBus, redisClient);
     return create(identity, packetBroker, redisClient);
   }
 
