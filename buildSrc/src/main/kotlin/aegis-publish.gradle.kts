@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "io.mikeamiry.aegis"
-version = "2.0.11"
+version = "2.0.12"
 
 java {
     withSourcesJar()
